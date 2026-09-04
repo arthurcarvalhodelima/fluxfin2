@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const projeto = await prisma.projeto.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      codigo: true,
+      titulo: true,
+      dataInicio: true,
+      dataTermino: true,
+      status: true,
+      progressoFisico: true,
+    },
+  });
+
+  if (!projeto) {
+    return NextResponse.json(
+      { error: "Projeto nao encontrado" },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({
+    id: projeto.id,
+    codigo: projeto.codigo,
+    titulo: projeto.titulo,
+    dataInicio: projeto.dataInicio.toISOString(),
+    dataTermino: projeto.dataTermino.toISOString(),
+    status: projeto.status,
+    progresso: Number(projeto.progressoFisico),
+  });
+}

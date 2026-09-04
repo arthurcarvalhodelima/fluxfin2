@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PapelUsuario {
+  COORDENADOR
+  PESQUISADOR
+  BOLSISTA
+}
+
+enum PapelSistema {
+  ADMIN
+  USUARIO
+}
+
+enum StatusProjeto {
+  ATIVO
+  CONCLUIDO
+  SUSPENSO
+  CANCELADO
+}
+
+enum StatusDespesa {
+  PENDENTE
+  APROVADA
+  REJEITADA
+  PAGA
+}
+
+model Usuario {
+  id            String   @id @default(uuid()) @db.Uuid
+  nome          String
+  email         String   @unique
+  senha         String
+  papelSistema  PapelSistema @default(USUARIO)
+  ativo         Boolean  @default(true)
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+
+  equipeProjeto         EquipeProjeto[]
+  documentosProjeto     DocumentoProjeto[]
+  despesasLancadas      Despesa[]
+  auditLogs             AuditLog[]
+}
+
+model Projeto {
+  id                String      @id @default(uuid()) @db.Uuid
+  codigo            String      @unique
+  titulo            String
+  descricao         String?
+  dataInicio        DateTime
+  dataTermino       DateTime
+  orcamentoGlobal   Decimal     @db.Decimal(15, 2)
+  status            StatusProjeto @default(ATIVO)
+  progressoFisico   Decimal     @default(0) @db.Decimal(5, 2)
+  criadoEm          DateTime    @default(now())
+  atualizadoEm      DateTime    @updatedAt
+
+  equipeProjeto         EquipeProjeto[]
+  rubricas              Rubrica[]
+  despesas              Despesa[]
+  documentosProjeto     DocumentoProjeto[]
+  milestones            Milestone[]
+  auditLogs             AuditLog[]
+}
+
+model EquipeProjeto {
+  id          String        @id @default(uuid()) @db.Uuid
+  projetoId   String        @db.Uuid
+  usuarioId   String        @db.Uuid
+  papel       PapelUsuario
+  criadoEm    DateTime      @default(now())
+
+  projeto     Projeto       @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  usuario     Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([projetoId, usuarioId])
+  @@index([projetoId])
+  @@index([usuarioId])
+}
+
+model Rubrica {
+  id              String   @id @default(uuid()) @db.Uuid
+  projetoId       String   @db.Uuid
+  nome            String
+  categoria       String
+  valorAlocado    Decimal  @db.Decimal(15, 2)
+  valorGasto      Decimal  @default(0) @db.Decimal(15, 2)
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  despesas        Despesa[]
+
+  @@unique([projetoId, categoria])
+  @@index([projetoId])
+}
+
+model Despesa {
+  id              String       @id @default(uuid()) @db.Uuid
+  projetoId       String       @db.Uuid
+  rubricaId       String       @db.Uuid
+  usuarioId       String       @db.Uuid
+  descricao       String
+  valor           Decimal      @db.Decimal(15, 2)
+  dataDespesa     DateTime
+  dataLancamento  DateTime     @default(now())
+  status          StatusDespesa @default(PENDENTE)
+  justificativa   String?
+  dataAprovacao   DateTime?
+  criadoEm        DateTime     @default(now())
+  atualizadoEm    DateTime     @updatedAt
+
+  projeto         Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  rubrica         Rubrica      @relation(fields: [rubricaId], references: [id], onDelete: Cascade)
+  usuario         Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([projetoId])
+  @@index([rubricaId])
+  @@index([status])
+}
+
+model DocumentoProjeto {
+  id              String   @id @default(uuid()) @db.Uuid
+  projetoId       String   @db.Uuid
+  usuarioId       String   @db.Uuid
+  nomeArquivo     String
+  extensao        String
+  urlArmazenamento String
+  dataUpload      DateTime @default(now())
+
+  projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  usuario         Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([projetoId])
+}
+
+model Milestone {
+  id              String   @id @default(uuid()) @db.Uuid
+  projetoId       String   @db.Uuid
+  nome            String
+  descricao       String?
+  dataPrevista    DateTime
+  dataExecucao    DateTime?
+  percentualPrevisto Decimal @db.Decimal(5, 2)
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+
+  projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+
+  @@index([projetoId])
+}
+
+model AuditLog {
+  id              String   @id @default(uuid()) @db.Uuid
+  usuarioId       String?  @db.Uuid
+  projetoId       String?  @db.Uuid
+  entidade        String
+  entidadeId      String
+  acao            String
+  dadosAnteriores Json?
+  dadosNovos      Json?
+  justificativa   String?
+  timestamp       DateTime @default(now())
+
+  usuario         Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  projeto         Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+
+  @@index([entidade, entidadeId])
+  @@index([usuarioId])
+  @@index([projetoId])
+  @@index([timestamp])
+}
