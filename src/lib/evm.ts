@@ -10,7 +10,7 @@ export function calculateSPI(EV: number, PV: number): number {
 
 export function calculateEAC(BAC: number, CPI: number): number {
   if (BAC < 0) return 0;
-  if (CPI === 0) return Infinity;
+  if (CPI === 0) return BAC;
   return Math.round((BAC / CPI) * 100) / 100;
 }
 
@@ -20,13 +20,13 @@ export function calculateETC(
   CPI: number
 ): number {
   if (BAC < 0 || EV < 0) return 0;
-  if (CPI === 0) return Infinity;
+  if (CPI === 0) return BAC - EV;
   return Math.round(((BAC - EV) / CPI) * 100) / 100;
 }
 
 export function calculateVAC(BAC: number, EAC: number): number {
   if (BAC < 0) return 0;
-  if (!isFinite(EAC)) return -Infinity;
+  if (!isFinite(EAC)) return BAC;
   return Math.round((BAC - EAC) * 100) / 100;
 }
 
@@ -38,6 +38,6 @@ export function calculateTCPI(
   if (BAC < 0 || EV < 0 || AC < 0) return 0;
   const remainingWork = BAC - EV;
   const remainingBudget = BAC - AC;
-  if (remainingBudget === 0) return Infinity;
+  if (remainingBudget === 0) return 1;
   return Math.round((remainingWork / remainingBudget) * 100) / 100;
 }

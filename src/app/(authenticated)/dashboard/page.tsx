@@ -280,7 +280,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex-1 space-y-2">
             <p className="text-sm text-muted">
-              CPI = Orcamento Total / Total Gasto
+              CPI = Earned Value / Custo Real
             </p>
             <p className="text-sm">
               <span className="font-medium text-foreground">Saldo disponivel: </span>

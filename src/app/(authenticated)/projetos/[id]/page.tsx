@@ -46,9 +46,18 @@ interface Projeto {
     dataUpload: string;
     usuario: { nome: string };
   }[];
+  milestones: {
+    id: string;
+    nome: string;
+    descricao: string | null;
+    dataPrevista: string;
+    dataExecucao: string | null;
+    percentualPrevisto: number;
+    _count: { despesas: number };
+  }[];
 }
 
-const tabs = ["Resumo", "Equipe", "Orcamento", "Despesas", "Documentos", "Gantt", "PERT/CPM"];
+const tabs = ["Resumo", "Equipe", "Orcamento", "Despesas", "Marcos", "Documentos", "Gantt", "PERT/CPM"];
 
 const statusVariants: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   ATIVO: "success",
@@ -80,6 +89,15 @@ export default function ProjetoDetailPage() {
   } | null>(null);
   const [pertCpmLoading, setPertCpmLoading] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
+  const [editingMilestone, setEditingMilestone] = useState<string | null>(null);
+  const [milestoneForm, setMilestoneForm] = useState({
+    nome: "",
+    descricao: "",
+    dataPrevista: "",
+    percentualPrevisto: 0,
+  });
+  const [milestoneLoading, setMilestoneLoading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
@@ -101,6 +119,86 @@ export default function ProjetoDetailPage() {
         setPertCpmLoading(false);
       })
       .catch(() => setPertCpmLoading(false));
+  }
+
+  function openMilestoneModal(milestone?: NonNullable<Projeto["milestones"]>[0]) {
+    if (milestone) {
+      setEditingMilestone(milestone.id);
+      setMilestoneForm({
+        nome: milestone.nome,
+        descricao: milestone.descricao || "",
+        dataPrevista: milestone.dataPrevista.split("T")[0],
+        percentualPrevisto: Number(milestone.percentualPrevisto),
+      });
+    } else {
+      setEditingMilestone(null);
+      setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0 });
+    }
+    setShowMilestoneModal(true);
+  }
+
+  async function handleSaveMilestone() {
+    if (!milestoneForm.nome || !milestoneForm.dataPrevista) return;
+    setMilestoneLoading(true);
+
+    try {
+      const url = editingMilestone
+        ? `/api/projetos/${id}/milestones/${editingMilestone}`
+        : `/api/projetos/${id}/milestones`;
+      const method = editingMilestone ? "PUT" : "POST";
+
+      await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: milestoneForm.nome,
+          descricao: milestoneForm.descricao || undefined,
+          dataPrevista: new Date(milestoneForm.dataPrevista).toISOString(),
+          percentualPrevisto: milestoneForm.percentualPrevisto,
+        }),
+      });
+
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+      setShowMilestoneModal(false);
+    } catch {
+      // handle error
+    } finally {
+      setMilestoneLoading(false);
+    }
+  }
+
+  async function handleDeleteMilestone(milestoneId: string) {
+    if (!confirm("Tem certeza que deseja excluir este marco?")) return;
+
+    try {
+      await fetch(`/api/projetos/${id}/milestones/${milestoneId}`, {
+        method: "DELETE",
+      });
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    } catch {
+      // handle error
+    }
+  }
+
+  async function handleToggleMilestone(milestone: NonNullable<Projeto["milestones"]>[0]) {
+    try {
+      await fetch(`/api/projetos/${id}/milestones/${milestone.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dataExecucao: milestone.dataExecucao ? null : new Date().toISOString(),
+        }),
+      });
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    } catch {
+      // handle error
+    }
   }
 
   const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
@@ -592,6 +690,77 @@ export default function ProjetoDetailPage() {
         </div>
       )}
 
+      {activeTab === "Marcos" && (
+        <div className="fluxfin-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Marcos do Projeto</h2>
+            <button onClick={() => openMilestoneModal()} className="fluxfin-btn-primary">
+              + Novo Marco
+            </button>
+          </div>
+          {projeto.milestones.length === 0 ? (
+            <p className="text-muted text-center py-8">Nenhum marco cadastrado</p>
+          ) : (
+            <div className="space-y-3">
+              {projeto.milestones.map((m) => (
+                <div
+                  key={m.id}
+                  className={`p-4 rounded-lg border ${
+                    m.dataExecucao ? "border-success/30 bg-success/5" : "border-border bg-surface-hover"
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium text-foreground">{m.nome}</p>
+                        {m.dataExecucao && (
+                          <Badge variant="success">Concluido</Badge>
+                        )}
+                      </div>
+                      {m.descricao && (
+                        <p className="text-sm text-muted mb-2">{m.descricao}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm text-muted">
+                        <span>Previsao: {new Date(m.dataPrevista).toLocaleDateString("pt-BR")}</span>
+                        {m.dataExecucao && (
+                          <span>Executado: {new Date(m.dataExecucao).toLocaleDateString("pt-BR")}</span>
+                        )}
+                        <span>{m._count.despesas} despesa(s)</span>
+                        <span>{Number(m.percentualPrevisto)}% previsto</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleMilestone(m)}
+                        className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                          m.dataExecucao
+                            ? "text-warning hover:bg-warning/10"
+                            : "text-primary-dark hover:bg-primary/10"
+                        }`}
+                      >
+                        {m.dataExecucao ? "Reabrir" : "Concluir"}
+                      </button>
+                      <button
+                        onClick={() => openMilestoneModal(m)}
+                        className="text-sm px-3 py-1.5 rounded-lg text-muted hover:bg-surface-hover transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMilestone(m.id)}
+                        className="text-sm px-3 py-1.5 rounded-lg text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {showExpenseModal && (
         <Modal
           isOpen={showExpenseModal}
@@ -607,7 +776,10 @@ export default function ProjetoDetailPage() {
               categoria: r.categoria,
               saldo: Number(r.valorAlocado) - Number(r.valorGasto),
             }))}
-            milestones={[]}
+            milestones={projeto.milestones.map((m) => ({
+              id: m.id,
+              nome: m.nome,
+            }))}
             onSuccess={() => {
               setShowExpenseModal(false);
               fetch(`/api/projetos/${id}`)
@@ -701,6 +873,71 @@ export default function ProjetoDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {showMilestoneModal && (
+        <Modal
+          isOpen={showMilestoneModal}
+          onClose={() => setShowMilestoneModal(false)}
+          title={editingMilestone ? "Editar Marco" : "Novo Marco"}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="fluxfin-label">Nome</label>
+              <input
+                type="text"
+                className="fluxfin-input"
+                value={milestoneForm.nome}
+                onChange={(e) => setMilestoneForm({ ...milestoneForm, nome: e.target.value })}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="fluxfin-label">Descricao (opcional)</label>
+              <textarea
+                className="fluxfin-input"
+                rows={2}
+                value={milestoneForm.descricao}
+                onChange={(e) => setMilestoneForm({ ...milestoneForm, descricao: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="fluxfin-label">Data Prevista</label>
+                <input
+                  type="date"
+                  className="fluxfin-input"
+                  value={milestoneForm.dataPrevista}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, dataPrevista: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="fluxfin-label">Percentual Previsto (%)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  className="fluxfin-input"
+                  value={milestoneForm.percentualPrevisto}
+                  onChange={(e) => setMilestoneForm({ ...milestoneForm, percentualPrevisto: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={() => setShowMilestoneModal(false)} className="fluxfin-btn-ghost">
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveMilestone}
+                disabled={milestoneLoading || !milestoneForm.nome || !milestoneForm.dataPrevista}
+                className="fluxfin-btn-primary disabled:opacity-50"
+              >
+                {milestoneLoading ? "Salvando..." : editingMilestone ? "Salvar" : "Criar"}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

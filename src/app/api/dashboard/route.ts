@@ -57,6 +57,12 @@ export async function GET() {
   const totalGasto = allDespesas.reduce((sum, d) => sum + Number(d.valor), 0)
 
   const projetosAtivosList = projetos.filter(p => p.status === 'ATIVO')
+  const projetosAtivosIds = new Set(projetosAtivosList.map(p => p.id))
+
+  const totalGastoAtivos = allDespesas
+    .filter(d => projetosAtivosIds.has(d.projetoId))
+    .reduce((sum, d) => sum + Number(d.valor), 0)
+
   const agora = new Date()
 
   const fluxoCaixa: { mes: string; entradas: number; saidas: number }[] = []
@@ -124,7 +130,7 @@ export async function GET() {
     totalPV += pv
     totalEV += ev
   }
-  const totalAC = totalGasto
+  const totalAC = totalGastoAtivos
 
   const cpi = calculateCPI(totalEV, totalAC)
   const spi = calculateSPI(totalEV, totalPV)

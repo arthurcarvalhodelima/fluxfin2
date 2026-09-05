@@ -147,6 +147,7 @@ async function main() {
         dataTermino: endDate,
         orcamentoGlobal: budget,
         status: randomChoice(statusPool),
+        progressoFisico: randomInt(0, 100),
       },
     });
 
@@ -218,6 +219,40 @@ async function main() {
 
   console.log(`✅ ${teamData.length} membros de equipe criados`);
 
+  console.log('\n🏁 Criando milestones para cada projeto...');
+  let totalMilestones = 0;
+
+  for (const project of projects) {
+    const numMilestones = randomInt(3, 5);
+    const milestoneNames = MILESTONE_NAMES.slice(0, numMilestones);
+    const durationMonths = project.duration;
+
+    for (let m = 0; m < numMilestones; m++) {
+      const fraction = (m + 1) / numMilestones;
+      const milestoneMonth = Math.round(durationMonths * fraction);
+      const milestoneDate = addMonths(project.startDate, Math.min(milestoneMonth, durationMonths));
+      const percentualPrevisto = Math.round((fraction * 100) * 100) / 100;
+
+      const isCompleted = project.status === StatusProjeto.CONCLUIDO ||
+        (project.status === StatusProjeto.ATIVO && Math.random() < fraction);
+
+      await prisma.milestone.create({
+        data: {
+          projetoId: project.id,
+          nome: milestoneNames[m],
+          descricao: `Marco ${m + 1} do projeto: ${milestoneNames[m]}`,
+          dataPrevista: milestoneDate,
+          dataExecucao: isCompleted ? milestoneDate : null,
+          percentualPrevisto,
+        },
+      });
+
+      totalMilestones++;
+    }
+  }
+
+  console.log(`✅ ${totalMilestones} milestones criados`);
+
   console.log('\n📊 Criando despesas para 30% dos projetos...');
   const allRubrics = await prisma.rubrica.findMany();
   const rubricsByProject = new Map<string, typeof allRubrics>();
@@ -288,40 +323,6 @@ async function main() {
   }
 
   console.log(`✅ ${totalExpenses} despesas criadas em ${projectsWithExpenses.length} projetos`);
-
-  console.log('\n🏁 Criando milestones para cada projeto...');
-  let totalMilestones = 0;
-
-  for (const project of projects) {
-    const numMilestones = randomInt(3, 5);
-    const milestoneNames = MILESTONE_NAMES.slice(0, numMilestones);
-    const durationMonths = project.duration;
-
-    for (let m = 0; m < numMilestones; m++) {
-      const fraction = (m + 1) / numMilestones;
-      const milestoneMonth = Math.round(durationMonths * fraction);
-      const milestoneDate = addMonths(project.startDate, Math.min(milestoneMonth, durationMonths));
-      const percentualPrevisto = Math.round((fraction * 100) * 100) / 100;
-
-      const isCompleted = project.status === StatusProjeto.CONCLUIDO ||
-        (project.status === StatusProjeto.ATIVO && Math.random() < fraction);
-
-      await prisma.milestone.create({
-        data: {
-          projetoId: project.id,
-          nome: milestoneNames[m],
-          descricao: `Marco ${m + 1} do projeto: ${milestoneNames[m]}`,
-          dataPrevista: milestoneDate,
-          dataExecucao: isCompleted ? milestoneDate : null,
-          percentualPrevisto,
-        },
-      });
-
-      totalMilestones++;
-    }
-  }
-
-  console.log(`✅ ${totalMilestones} milestones criados`);
 
   console.log('\n🎉 Seed concluído com sucesso!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
