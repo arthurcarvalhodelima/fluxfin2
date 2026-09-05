@@ -19,7 +19,7 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/projetos")
+    fetch("/api/projetos?limit=500")
       .then((res) => res.json())
       .then((json) => {
         const mapped = (json.projetos || []).map((p: Record<string, unknown>) => ({
