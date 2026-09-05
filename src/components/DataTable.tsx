@@ -146,7 +146,7 @@ export default function DataTable<T extends object>({
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-4 py-3">Acoes</th>}
+              {actions && <th className="px-4 py-3">Ações</th>}
             </tr>
           </thead>
           <tbody>
