@@ -17,6 +17,11 @@ interface Usuario {
   criadoEm: string;
 }
 
+type ConfirmAction = {
+  type: "toggle" | "delete";
+  usuario: Usuario;
+};
+
 export default function UsuariosPage() {
   const router = useRouter();
   const { data: session } = useSession();
@@ -24,9 +29,9 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    usuario: Usuario | null;
-  }>({ isOpen: false, usuario: null });
-  const [toggling, setToggling] = useState(false);
+    action: ConfirmAction | null;
+  }>({ isOpen: false, action: null });
+  const [processing, setProcessing] = useState(false);
 
   const isAdmin = session?.user?.papelSistema === "ADMIN";
 
@@ -45,21 +50,47 @@ export default function UsuariosPage() {
   }, []);
 
   const handleToggleActive = async () => {
-    if (!confirmDialog.usuario) return;
-    setToggling(true);
+    if (!confirmDialog.action) return;
+    const { usuario } = confirmDialog.action;
+    setProcessing(true);
 
     try {
-      await fetch(`/api/usuarios/${confirmDialog.usuario.id}`, {
+      await fetch(`/api/usuarios/${usuario.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ativo: !usuario.ativo }),
+      });
+      fetchUsuarios();
+    } catch {
+      // handle error
+    } finally {
+      setProcessing(false);
+      setConfirmDialog({ isOpen: false, action: null });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDialog.action) return;
+    const { usuario } = confirmDialog.action;
+    setProcessing(true);
+
+    try {
+      await fetch(`/api/usuarios/${usuario.id}`, {
         method: "DELETE",
       });
       fetchUsuarios();
     } catch {
       // handle error
     } finally {
-      setToggling(false);
-      setConfirmDialog({ isOpen: false, usuario: null });
+      setProcessing(false);
+      setConfirmDialog({ isOpen: false, action: null });
     }
   };
+
+  const confirm = confirmDialog.action;
+  const isToggle = confirm?.type === "toggle";
+  const toggleUser = isToggle ? confirm?.usuario : null;
+  const deleteConfirm = !isToggle ? confirm?.usuario : null;
 
   const columns: Column<Usuario>[] = [
     { key: "nome", header: "Nome", sortable: true },
@@ -117,37 +148,72 @@ export default function UsuariosPage() {
         searchPlaceholder="Buscar por nome ou email..."
         actions={
           isAdmin
-            ? (item) => (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setConfirmDialog({ isOpen: true, usuario: item })
-                    }
-                    className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                      item.ativo
-                        ? "text-danger hover:bg-danger/10"
-                        : "text-primary-dark hover:bg-primary/10"
-                    }`}
-                  >
-                    {item.ativo ? "Desativar" : "Ativar"}
-                  </button>
-                </div>
-              )
+            ? (item) => {
+                if (item.id === session?.user?.id) return null;
+                return (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        setConfirmDialog({
+                          isOpen: true,
+                          action: { type: "toggle", usuario: item },
+                        })
+                      }
+                      className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                        item.ativo
+                          ? "text-danger hover:bg-danger/10"
+                          : "text-primary-dark hover:bg-primary/10"
+                      }`}
+                    >
+                      {item.ativo ? "Desativar" : "Ativar"}
+                    </button>
+                    {!item.ativo && (
+                      <button
+                        onClick={() =>
+                          setConfirmDialog({
+                            isOpen: true,
+                            action: { type: "delete", usuario: item },
+                          })
+                        }
+                        className="text-sm px-3 py-1.5 rounded-lg text-danger hover:bg-danger/10 transition-colors"
+                      >
+                        Excluir
+                      </button>
+                    )}
+                  </div>
+                );
+              }
             : undefined
         }
       />
 
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ isOpen: false, usuario: null })}
-        onConfirm={handleToggleActive}
-        title={confirmDialog.usuario?.ativo ? "Desativar Usuario" : "Ativar Usuario"}
-        message={`Tem certeza que deseja ${
-          confirmDialog.usuario?.ativo ? "desativar" : "ativar"
-        } o usuario "${confirmDialog.usuario?.nome}"?`}
-        confirmLabel={confirmDialog.usuario?.ativo ? "Desativar" : "Ativar"}
-        variant={confirmDialog.usuario?.ativo ? "danger" : "warning"}
-        loading={toggling}
+        onClose={() => setConfirmDialog({ isOpen: false, action: null })}
+        onConfirm={isToggle ? handleToggleActive : handleDelete}
+        title={
+          isToggle
+            ? toggleUser?.ativo
+              ? "Desativar Usuario"
+              : "Ativar Usuario"
+            : "Excluir Usuario"
+        }
+        message={
+          isToggle
+            ? `Tem certeza que deseja ${
+                toggleUser?.ativo ? "desativar" : "ativar"
+              } o usuario "${toggleUser?.nome}"?`
+            : `Tem certeza que deseja excluir permanentemente o usuario "${deleteConfirm?.nome}"? Esta acao nao pode ser desfeita.`
+        }
+        confirmLabel={
+          isToggle
+            ? toggleUser?.ativo
+              ? "Desativar"
+              : "Ativar"
+            : "Excluir"
+        }
+        variant={isToggle ? (toggleUser?.ativo ? "danger" : "warning") : "danger"}
+        loading={processing}
       />
     </div>
   );

@@ -100,8 +100,8 @@ export async function PUT(
     entity: 'Usuario',
     entityId: id,
     action: 'ATUALIZAR',
-    oldData: { nome: existing.nome, email: existing.email, papelSistema: existing.papelSistema },
-    newData: { nome: usuario.nome, email: usuario.email, papelSistema: usuario.papelSistema },
+    oldData: { nome: existing.nome, email: existing.email, papelSistema: existing.papelSistema, ativo: existing.ativo },
+    newData: { nome: usuario.nome, email: usuario.email, papelSistema: usuario.papelSistema, ativo: usuario.ativo },
   })
 
   return NextResponse.json({
@@ -142,8 +142,8 @@ export async function DELETE(
     userId: session.user.id,
     entity: 'Usuario',
     entityId: id,
-    action: 'DESATIVAR',
-    oldData: { ativo: true },
+    action: 'EXCLUIR',
+    oldData: { nome: existing.nome, email: existing.email, ativo: existing.ativo },
     newData: { deletedAt: new Date().toISOString() },
   })
 
