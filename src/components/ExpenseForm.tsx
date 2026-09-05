@@ -14,6 +14,15 @@ interface Milestone {
   nome: string;
 }
 
+const categoriaLabels: Record<string, string> = {
+  RECURSOS_HUMANOS: "Recursos Humanos",
+  SERVICOS_TERCEIROS: "Servicos de Terceiros",
+  MATERIAIS_CONSUMO: "Materiais de Consumo",
+  MATERIAIS_PERMANENTES: "Materiais Permanentes",
+  VIAGENS_DIARIAS: "Viagens e Diarias",
+  CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
+};
+
 interface ExpenseFormProps {
   projetoId: string;
   rubricas: Rubrica[];
@@ -118,7 +127,7 @@ export default function ExpenseForm({
           <option value="">Selecione uma rubrica</option>
           {rubricas.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.nome} - {r.categoria}
+              {r.nome} - {categoriaLabels[r.categoria] || r.categoria}
             </option>
           ))}
         </select>
