@@ -106,7 +106,8 @@ export default function DataTable<T extends object>({
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="fluxfin-input pl-10"
+            className="fluxfin-input"
+            style={{ paddingLeft: "2.5rem" }}
           />
         </div>
       </div>
