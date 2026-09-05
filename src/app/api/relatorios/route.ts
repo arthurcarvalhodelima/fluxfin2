@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { checkProjectAccess } from '@/lib/permissions'
+import { maskEmail } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const reportSchema = z.object({
@@ -19,6 +21,11 @@ export async function POST(request: NextRequest) {
 
   if (!parsed.success) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const hasAccess = await checkProjectAccess(parsed.data.projetoId, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
   const projeto = await prisma.projeto.findUnique({
@@ -102,7 +109,7 @@ export async function POST(request: NextRequest) {
     timelineDespesas,
     equipe: projeto.equipeProjeto.map(e => ({
       nome: e.usuario.nome,
-      email: e.usuario.email,
+      email: session.user.papelSistema !== 'ADMIN' ? maskEmail(e.usuario.email) : e.usuario.email,
       papel: e.papel,
     })),
     documentos: projeto.documentosProjeto.map(d => ({

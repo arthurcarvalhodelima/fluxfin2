@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Badge from "@/components/Badge";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import Modal from "@/components/Modal";
+import ExpenseForm from "@/components/ExpenseForm";
+import { calculateCPI, calculateSPI, calculateEAC, calculateETC, calculateVAC } from "@/lib/evm";
 
 interface Projeto {
   id: string;
@@ -45,7 +48,7 @@ interface Projeto {
   }[];
 }
 
-const tabs = ["Resumo", "Equipe", "Orcamento", "Despesas", "Documentos", "Gantt"];
+const tabs = ["Resumo", "Equipe", "Orcamento", "Despesas", "Documentos", "Gantt", "PERT/CPM"];
 
 const statusVariants: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   ATIVO: "success",
@@ -69,6 +72,14 @@ export default function ProjetoDetailPage() {
   const [projeto, setProjeto] = useState<Projeto | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Resumo");
+  const [pertCpm, setPertCpm] = useState<{
+    caminhoCritico: string[];
+    duracaoTotal: number;
+    folgas: Record<string, number>;
+    atividades: { id: string; nome: string; duracao: number; predecessorIds: string[] }[];
+  } | null>(null);
+  const [pertCpmLoading, setPertCpmLoading] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
@@ -79,6 +90,39 @@ export default function ProjetoDetailPage() {
       })
       .catch(() => setLoading(false));
   }, [id]);
+
+  function fetchPertCpm() {
+    if (pertCpm || pertCpmLoading) return;
+    setPertCpmLoading(true);
+    fetch(`/api/projetos/${id}/pert-cpm`)
+      .then((res) => res.json())
+      .then((json) => {
+        setPertCpm(json);
+        setPertCpmLoading(false);
+      })
+      .catch(() => setPertCpmLoading(false));
+  }
+
+  const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
+
+  const evmMetrics = useMemo(() => {
+    if (!projeto) return null;
+    const agora = new Date();
+    const inicio = new Date(projeto.dataInicio).getTime();
+    const termino = new Date(projeto.dataTermino).getTime();
+    const duracaoTotal = termino - inicio;
+    const tempoDecorrido = Math.min(Math.max(agora.getTime() - inicio, 0), duracaoTotal);
+    const BAC = Number(projeto.orcamentoGlobal);
+    const PV = duracaoTotal > 0 ? (tempoDecorrido / duracaoTotal) * BAC : 0;
+    const EV = (Number(projeto.progressoFisico) / 100) * BAC;
+    const AC = totalGasto;
+    const cpi = calculateCPI(EV, AC);
+    const spi = calculateSPI(EV, PV);
+    const eac = calculateEAC(BAC, cpi);
+    const etc = calculateETC(BAC, EV, cpi);
+    const vac = calculateVAC(BAC, eac);
+    return { PV, EV, AC, BAC, cpi, spi, eac, etc, vac };
+  }, [projeto, totalGasto]);
 
   if (loading) {
     return (
@@ -97,7 +141,6 @@ export default function ProjetoDetailPage() {
   }
 
   const totalRubricas = projeto.rubricas.reduce((sum, r) => sum + Number(r.valorAlocado), 0);
-  const totalGasto = projeto.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0);
   const saldo = Number(projeto.orcamentoGlobal) - totalGasto;
 
   return (
@@ -121,7 +164,10 @@ export default function ProjetoDetailPage() {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab === "PERT/CPM") fetchPertCpm();
+              }}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
                   ? "border-primary text-primary-dark"
@@ -135,7 +181,8 @@ export default function ProjetoDetailPage() {
       </div>
 
       {activeTab === "Resumo" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="fluxfin-card space-y-4">
             <h2 className="text-lg font-semibold text-foreground">Informacoes do Projeto</h2>
             <div className="space-y-3">
@@ -211,6 +258,73 @@ export default function ProjetoDetailPage() {
               </div>
             </div>
           </div>
+          </div>
+
+          {evmMetrics && (
+            <div className="fluxfin-card space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">Analise EVM (Earned Value Management)</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {[
+                  {
+                    label: "CPI",
+                    value: evmMetrics.cpi.toFixed(2),
+                    color: evmMetrics.cpi >= 1 ? "text-green-600" : "text-red-600",
+                    desc: "Custo",
+                  },
+                  {
+                    label: "SPI",
+                    value: evmMetrics.spi.toFixed(2),
+                    color: evmMetrics.spi >= 1 ? "text-green-600" : "text-red-600",
+                    desc: "Cronograma",
+                  },
+                  {
+                    label: "EAC",
+                    value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.eac),
+                    color: evmMetrics.eac <= evmMetrics.BAC ? "text-green-600" : "text-red-600",
+                    desc: "Estimativa Final",
+                  },
+                  {
+                    label: "ETC",
+                    value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.etc),
+                    color: "text-foreground",
+                    desc: "Para Concluir",
+                  },
+                  {
+                    label: "VAC",
+                    value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.vac),
+                    color: evmMetrics.vac >= 0 ? "text-green-600" : "text-red-600",
+                    desc: "Variacao",
+                  },
+                ].map((card) => (
+                  <div key={card.label} className="p-4 rounded-lg bg-surface-hover">
+                    <p className="text-sm text-muted">{card.label}</p>
+                    <p className={`text-xl font-bold mt-1 ${card.color}`}>{card.value}</p>
+                    <p className="text-xs text-muted mt-1">{card.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-2">
+                <div className="p-3 rounded-lg bg-surface-hover">
+                  <p className="text-xs text-muted">PV (Planned Value)</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.PV)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface-hover">
+                  <p className="text-xs text-muted">EV (Earned Value)</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.EV)}
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-surface-hover">
+                  <p className="text-xs text-muted">AC (Actual Cost)</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.AC)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -322,6 +436,12 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Despesas</h2>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="fluxfin-btn-primary"
+            >
+              Nova Despesa
+            </button>
           </div>
           {projeto.despesas.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhuma despesa registrada</p>
@@ -469,6 +589,117 @@ export default function ProjetoDetailPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {showExpenseModal && (
+        <Modal
+          isOpen={showExpenseModal}
+          onClose={() => setShowExpenseModal(false)}
+          title="Nova Despesa"
+          size="lg"
+        >
+          <ExpenseForm
+            projetoId={id}
+            rubricas={projeto.rubricas.map((r) => ({
+              id: r.id,
+              nome: r.nome,
+              categoria: r.categoria,
+              saldo: Number(r.valorAlocado) - Number(r.valorGasto),
+            }))}
+            milestones={[]}
+            onSuccess={() => {
+              setShowExpenseModal(false);
+              fetch(`/api/projetos/${id}`)
+                .then((res) => res.json())
+                .then((json) => setProjeto(json));
+            }}
+            onCancel={() => setShowExpenseModal(false)}
+          />
+        </Modal>
+      )}
+
+      {activeTab === "PERT/CPM" && (
+        <div className="fluxfin-card">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Analise PERT/CPM</h2>
+          {pertCpmLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : !pertCpm || pertCpm.atividades.length === 0 ? (
+            <p className="text-muted text-center py-8">Nenhum milestone encontrado para calcular o caminho critico</p>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-4 rounded-lg bg-surface-hover">
+                  <p className="text-sm text-muted">Duracao Total</p>
+                  <p className="text-2xl font-bold text-foreground">{pertCpm.duracaoTotal} dias</p>
+                </div>
+                <div className="p-4 rounded-lg bg-surface-hover">
+                  <p className="text-sm text-muted">Atividades no Caminho Critico</p>
+                  <p className="text-2xl font-bold text-danger">{pertCpm.caminhoCritico.length}</p>
+                </div>
+              </div>
+
+              {pertCpm.caminhoCritico.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Caminho Critico</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {pertCpm.caminhoCritico.map((id) => {
+                      const atividade = pertCpm.atividades.find(a => a.id === id);
+                      return (
+                        <Badge key={id} variant="danger">
+                          {atividade?.nome || id}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2">Todas as Atividades</h3>
+                <div className="overflow-x-auto">
+                  <table className="fluxfin-table">
+                    <thead>
+                      <tr>
+                        <th className="px-4 py-3">Atividade</th>
+                        <th className="px-4 py-3">Duracao (dias)</th>
+                        <th className="px-4 py-3">Folga (dias)</th>
+                        <th className="px-4 py-3">Predecessores</th>
+                        <th className="px-4 py-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pertCpm.atividades.map((atividade) => {
+                        const isCritico = pertCpm.caminhoCritico.includes(atividade.id);
+                        const folga = pertCpm.folgas[atividade.id];
+                        return (
+                          <tr key={atividade.id}>
+                            <td className="px-4 py-3 font-medium">{atividade.nome}</td>
+                            <td className="px-4 py-3">{atividade.duracao}</td>
+                            <td className="px-4 py-3">{folga}</td>
+                            <td className="px-4 py-3">
+                              {atividade.predecessorIds.length === 0
+                                ? "-"
+                                : atividade.predecessorIds
+                                    .map(pid => pertCpm.atividades.find(a => a.id === pid)?.nome || pid)
+                                    .join(", ")}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge variant={isCritico ? "danger" : "success"}>
+                                {isCritico ? "Critico" : "Normal"}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

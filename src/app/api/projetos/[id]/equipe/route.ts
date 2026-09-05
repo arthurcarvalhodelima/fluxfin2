@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { checkProjectAccess } from '@/lib/permissions'
+import { maskEmail } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const addMemberSchema = z.object({
@@ -20,6 +22,11 @@ export async function GET(
 
   const { id } = await params
 
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   const projeto = await prisma.projeto.findUnique({ where: { id } })
   if (!projeto) {
     return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
@@ -32,6 +39,14 @@ export async function GET(
     },
     orderBy: { criadoEm: 'asc' },
   })
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    const masked = equipe.map(e => ({
+      ...e,
+      usuario: { ...e.usuario, email: maskEmail(e.usuario.email) },
+    }))
+    return NextResponse.json(masked)
+  }
 
   return NextResponse.json(equipe)
 }
@@ -51,6 +66,11 @@ export async function POST(
 
   if (!parsed.success) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
   const projeto = await prisma.projeto.findUnique({ where: { id } })

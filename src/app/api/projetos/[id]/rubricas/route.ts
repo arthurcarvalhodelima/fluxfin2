@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { checkProjectAccess } from '@/lib/permissions'
 import { z } from 'zod'
 
 const RUBRIC_CATEGORIES = [
@@ -70,6 +71,11 @@ export async function POST(
 
   if (!parsed.success) {
     return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
   const projeto = await prisma.projeto.findUnique({ where: { id } })

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { getUserProjectIds } from '@/lib/permissions'
 import { z } from 'zod'
 
 const createProjectSchema = z.object({
@@ -38,7 +39,12 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search')
   const skip = (page - 1) * limit
 
-  const where: Record<string, unknown> = {}
+  const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
+  const where: Record<string, unknown> = { deletedAt: null }
+
+  if (userProjectIds.length > 0) {
+    where.id = { in: userProjectIds }
+  }
 
   if (status) {
     where.status = status

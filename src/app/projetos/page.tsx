@@ -109,12 +109,20 @@ export default function ProjetosPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Projetos</h1>
-        <button
-          onClick={() => router.push("/projetos/novo")}
-          className="fluxfin-btn-primary"
-        >
-          Novo Projeto
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/projetos/portfolio")}
+            className="fluxfin-btn-secondary"
+          >
+            Ver Gantt
+          </button>
+          <button
+            onClick={() => router.push("/projetos/novo")}
+            className="fluxfin-btn-primary"
+          >
+            Novo Projeto
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

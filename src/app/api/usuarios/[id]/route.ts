@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { maskEmail } from '@/lib/lgpd'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
@@ -24,8 +25,8 @@ export async function GET(
 
   const { id } = await params
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { id },
+  const usuario = await prisma.usuario.findFirst({
+    where: { id, deletedAt: null },
     select: {
       id: true,
       nome: true,
@@ -45,6 +46,10 @@ export async function GET(
 
   if (!usuario) {
     return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+  }
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    return NextResponse.json({ ...usuario, email: maskEmail(usuario.email) })
   }
 
   return NextResponse.json(usuario)
@@ -130,7 +135,7 @@ export async function DELETE(
 
   const usuario = await prisma.usuario.update({
     where: { id },
-    data: { ativo: false },
+    data: { deletedAt: new Date() },
   })
 
   await createAuditLog({
@@ -139,7 +144,7 @@ export async function DELETE(
     entityId: id,
     action: 'DESATIVAR',
     oldData: { ativo: true },
-    newData: { ativo: false },
+    newData: { deletedAt: new Date().toISOString() },
   })
 
   return NextResponse.json({ id: usuario.id, ativo: false })

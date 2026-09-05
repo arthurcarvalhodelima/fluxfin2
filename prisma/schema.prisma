@@ -39,6 +39,7 @@ model Usuario {
   senha         String
   papelSistema  PapelSistema @default(USUARIO)
   ativo         Boolean  @default(true)
+  deletedAt     DateTime?
   criadoEm      DateTime @default(now())
   atualizadoEm  DateTime @updatedAt
 
@@ -58,6 +59,7 @@ model Projeto {
   orcamentoGlobal   Decimal     @db.Decimal(15, 2)
   status            StatusProjeto @default(ATIVO)
   progressoFisico   Decimal     @default(0) @db.Decimal(5, 2)
+  deletedAt         DateTime?
   criadoEm          DateTime    @default(now())
   atualizadoEm      DateTime    @updatedAt
 
@@ -116,9 +118,12 @@ model Despesa {
   criadoEm        DateTime     @default(now())
   atualizadoEm    DateTime     @updatedAt
 
+  milestoneId     String?      @db.Uuid
+
   projeto         Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
   rubrica         Rubrica      @relation(fields: [rubricaId], references: [id], onDelete: Cascade)
   usuario         Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  milestone       Milestone?   @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
 
   @@index([projetoId])
   @@index([rubricaId])
@@ -152,6 +157,7 @@ model Milestone {
   atualizadoEm    DateTime @updatedAt
 
   projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  despesas        Despesa[]
 
   @@index([projetoId])
 }

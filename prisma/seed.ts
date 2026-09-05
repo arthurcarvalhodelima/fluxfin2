@@ -66,8 +66,7 @@ function generateProjectCode(index: number, year: number): string {
 }
 
 function randomDate(year: number, month: number): Date {
-  const day = randomInt(1, 28);
-  return new Date(year, month - 1, day);
+  return new Date(year, month - 1, 1);
 }
 
 function addMonths(date: Date, months: number): Date {
@@ -229,11 +228,21 @@ async function main() {
     rubricsByProject.get(r.projetoId)!.push(r);
   }
 
+  const allMilestones = await prisma.milestone.findMany();
+  const milestonesByProject = new Map<string, typeof allMilestones>();
+  for (const m of allMilestones) {
+    if (!milestonesByProject.has(m.projetoId)) {
+      milestonesByProject.set(m.projetoId, []);
+    }
+    milestonesByProject.get(m.projetoId)!.push(m);
+  }
+
   const projectsWithExpenses = projects.filter(() => Math.random() < 0.3);
   let totalExpenses = 0;
 
   for (const project of projectsWithExpenses) {
     const rubrics = rubricsByProject.get(project.id) || [];
+    const milestones = milestonesByProject.get(project.id) || [];
     const expenseUser = randomChoice([admin, ...coordenadores]);
 
     for (const rubric of rubrics) {
@@ -255,6 +264,10 @@ async function main() {
           StatusDespesa.PAGA,
         ];
 
+        const milestoneId = Math.random() < 0.5 && milestones.length > 0
+          ? randomChoice(milestones).id
+          : null;
+
         await prisma.despesa.create({
           data: {
             projetoId: project.id,
@@ -264,6 +277,7 @@ async function main() {
             valor: value,
             dataDespesa: expenseDate,
             status: randomChoice(statuses),
+            milestoneId,
           },
         });
 

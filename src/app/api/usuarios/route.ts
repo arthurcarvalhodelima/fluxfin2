@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
+import { maskEmail } from '@/lib/lgpd'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   const [usuarios, total] = await Promise.all([
     prisma.usuario.findMany({
-      where: { ativo: true },
+      where: { deletedAt: null },
       select: {
         id: true,
         nome: true,
@@ -38,8 +39,13 @@ export async function GET(request: NextRequest) {
       take: limit,
       orderBy: { criadoEm: 'desc' },
     }),
-    prisma.usuario.count({ where: { ativo: true } }),
+    prisma.usuario.count({ where: { deletedAt: null } }),
   ])
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    const masked = usuarios.map(u => ({ ...u, email: maskEmail(u.email) }))
+    return NextResponse.json({ usuarios: masked, total, page, limit })
+  }
 
   return NextResponse.json({ usuarios, total, page, limit })
 }

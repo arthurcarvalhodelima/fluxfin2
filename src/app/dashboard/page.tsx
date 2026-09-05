@@ -26,6 +26,17 @@ interface DashboardData {
   burndown: { dia: string; previsto: number; real: number }[];
   cpi: number;
   projetosConcluidos: number;
+  evm: {
+    cpi: number;
+    spi: number;
+    eac: number;
+    etc: number;
+    vac: number;
+    tcpi: number;
+    pv: number;
+    ev: number;
+    ac: number;
+  };
 }
 
 function formatCurrency(value: number) {
@@ -119,6 +130,47 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[
+          {
+            label: "SPI",
+            value: data.evm.spi.toFixed(2),
+            color: data.evm.spi >= 1 ? "text-green-600" : "text-red-600",
+            desc: "Schedule Performance Index",
+          },
+          {
+            label: "EAC",
+            value: formatCurrency(data.evm.eac),
+            color: data.evm.eac <= data.totalOrcamento ? "text-green-600" : "text-red-600",
+            desc: "Estimate At Completion",
+          },
+          {
+            label: "ETC",
+            value: formatCurrency(data.evm.etc),
+            color: "text-foreground",
+            desc: "Estimate To Complete",
+          },
+          {
+            label: "VAC",
+            value: formatCurrency(data.evm.vac),
+            color: data.evm.vac >= 0 ? "text-green-600" : "text-red-600",
+            desc: "Variance At Completion",
+          },
+          {
+            label: "TCPI",
+            value: data.evm.tcpi.toFixed(2),
+            color: data.evm.tcpi <= 1 ? "text-green-600" : "text-red-600",
+            desc: "To-Complete Performance Index",
+          },
+        ].map((card) => (
+          <div key={card.label} className="fluxfin-card">
+            <p className="text-sm text-muted">{card.label}</p>
+            <p className={`text-xl font-bold mt-1 ${card.color}`}>{card.value}</p>
+            <p className="text-xs text-muted mt-1">{card.desc}</p>
           </div>
         ))}
       </div>

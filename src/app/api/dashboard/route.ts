@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getUserProjectIds } from '@/lib/permissions'
+import { calculateCPI, calculateSPI, calculateEAC, calculateETC, calculateVAC, calculateTCPI } from '@/lib/evm'
 
 export async function GET() {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
+
+  const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
+  const projectFilter = userProjectIds.length > 0 ? { id: { in: userProjectIds }, deletedAt: null } : { deletedAt: null }
 
   const [
     totalProjetos,
@@ -16,10 +21,11 @@ export async function GET() {
     allDespesas,
     projetosConcluidos,
   ] = await Promise.all([
-    prisma.projeto.count(),
-    prisma.projeto.count({ where: { status: 'ATIVO' } }),
-    prisma.projeto.groupBy({ by: ['status'], _count: true }),
+    prisma.projeto.count({ where: projectFilter }),
+    prisma.projeto.count({ where: { ...projectFilter, status: 'ATIVO' } }),
+    prisma.projeto.groupBy({ by: ['status'], where: projectFilter, _count: true }),
     prisma.projeto.findMany({
+      where: projectFilter,
       select: {
         id: true,
         orcamentoGlobal: true,
@@ -30,7 +36,10 @@ export async function GET() {
       },
     }),
     prisma.despesa.findMany({
-      where: { status: { in: ['APROVADA', 'PAGA'] } },
+      where: {
+        status: { in: ['APROVADA', 'PAGA'] },
+        ...(userProjectIds.length > 0 ? { projetoId: { in: userProjectIds } } : {}),
+      },
       select: {
         valor: true,
         dataDespesa: true,
@@ -39,7 +48,7 @@ export async function GET() {
       },
     }),
     prisma.projeto.findMany({
-      where: { status: 'CONCLUIDO' },
+      where: { ...projectFilter, status: 'CONCLUIDO' },
       select: { id: true, orcamentoGlobal: true, dataTermino: true },
     }),
   ])
@@ -100,7 +109,29 @@ export async function GET() {
     }
   }
 
-  const cpi = totalGasto > 0 ? totalOrcamento / totalGasto : 0
+  let totalPV = 0
+  let totalEV = 0
+  const totalBAC = projetos.reduce((sum, p) => sum + Number(p.orcamentoGlobal), 0)
+
+  for (const p of projetosAtivosList) {
+    const inicio = new Date(p.dataInicio).getTime()
+    const termino = new Date(p.dataTermino).getTime()
+    const agoraMs = agora.getTime()
+    const duracaoTotal = termino - inicio
+    const tempoDecorrido = Math.min(Math.max(agoraMs - inicio, 0), duracaoTotal)
+    const pv = duracaoTotal > 0 ? (tempoDecorrido / duracaoTotal) * Number(p.orcamentoGlobal) : 0
+    const ev = (Number(p.progressoFisico) / 100) * Number(p.orcamentoGlobal)
+    totalPV += pv
+    totalEV += ev
+  }
+  const totalAC = totalGasto
+
+  const cpi = calculateCPI(totalEV, totalAC)
+  const spi = calculateSPI(totalEV, totalPV)
+  const eac = calculateEAC(totalBAC, cpi)
+  const etc = calculateETC(totalBAC, totalEV, cpi)
+  const vac = calculateVAC(totalBAC, eac)
+  const tcpi = calculateTCPI(totalBAC, totalEV, totalAC)
 
   return NextResponse.json({
     totalProjetos,
@@ -112,12 +143,23 @@ export async function GET() {
     percentualExecutado: totalOrcamento > 0 ? (totalGasto / totalOrcamento * 100).toFixed(2) : 0,
     fluxoCaixa,
     burndown,
-    cpi: Math.round(cpi * 100) / 100,
+    cpi,
     projetosConcluidos: projetosConcluidos.length,
     despesasPorCategoria: allDespesas.reduce((acc, d) => {
       const cat = d.rubrica.categoria
       acc[cat] = (acc[cat] || 0) + Number(d.valor)
       return acc
     }, {} as Record<string, number>),
+    evm: {
+      cpi,
+      spi,
+      eac,
+      etc,
+      vac,
+      tcpi,
+      pv: Math.round(totalPV * 100) / 100,
+      ev: Math.round(totalEV * 100) / 100,
+      ac: totalAC,
+    },
   })
 }
