@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import FormField from "@/components/FormField";
 
 const CATEGORIAS = [
@@ -21,6 +22,7 @@ interface RubricaForm {
 
 export default function NovoProjetoPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -69,7 +71,7 @@ export default function NovoProjetoPage() {
         orcamentoGlobal: parseFloat(orcamentoGlobal),
         equipe: [
           {
-            usuarioId: "00000000-0000-0000-0000-000000000000",
+            usuarioId: session?.user?.id ?? "",
             papel: "COORDENADOR" as const,
           },
         ],
@@ -89,8 +91,14 @@ export default function NovoProjetoPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Erro ao criar projeto");
+        let message = "Erro ao criar projeto";
+        try {
+          const data = await res.json();
+          message = data.error || message;
+        } catch {
+          // Response body was not valid JSON
+        }
+        throw new Error(message);
       }
 
       router.refresh();

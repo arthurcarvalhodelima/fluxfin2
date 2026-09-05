@@ -108,48 +108,56 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const projeto = await prisma.$transaction(async (tx) => {
-    const proj = await tx.projeto.create({
-      data: {
-        codigo,
-        titulo,
-        descricao,
-        dataInicio: new Date(dataInicio),
-        dataTermino: new Date(dataTermino),
-        orcamentoGlobal,
-      },
-    })
+  try {
+    const projeto = await prisma.$transaction(async (tx) => {
+      const proj = await tx.projeto.create({
+        data: {
+          codigo,
+          titulo,
+          descricao,
+          dataInicio: new Date(dataInicio),
+          dataTermino: new Date(dataTermino),
+          orcamentoGlobal,
+        },
+      })
 
-    await tx.equipeProjeto.createMany({
-      data: equipe.map(m => ({
-        projetoId: proj.id,
-        usuarioId: m.usuarioId,
-        papel: m.papel,
-      })),
-    })
-
-    if (rubricas && rubricas.length > 0) {
-      await tx.rubrica.createMany({
-        data: rubricas.map(r => ({
+      await tx.equipeProjeto.createMany({
+        data: equipe.map(m => ({
           projetoId: proj.id,
-          nome: r.nome,
-          categoria: r.categoria,
-          valorAlocado: r.valorAlocado,
+          usuarioId: m.usuarioId,
+          papel: m.papel,
         })),
       })
-    }
 
-    return proj
-  })
+      if (rubricas && rubricas.length > 0) {
+        await tx.rubrica.createMany({
+          data: rubricas.map(r => ({
+            projetoId: proj.id,
+            nome: r.nome,
+            categoria: r.categoria,
+            valorAlocado: r.valorAlocado,
+          })),
+        })
+      }
 
-  await createAuditLog({
-    userId: session.user.id,
-    projetoId: projeto.id,
-    entity: 'Projeto',
-    entityId: projeto.id,
-    action: 'CRIAR',
-    newData: { codigo, titulo, orcamentoGlobal },
-  })
+      return proj
+    })
 
-  return NextResponse.json(projeto, { status: 201 })
+    await createAuditLog({
+      userId: session.user.id,
+      projetoId: projeto.id,
+      entity: 'Projeto',
+      entityId: projeto.id,
+      action: 'CRIAR',
+      newData: { codigo, titulo, orcamentoGlobal },
+    })
+
+    return NextResponse.json(projeto, { status: 201 })
+  } catch (error) {
+    console.error('Error creating project:', error)
+    return NextResponse.json(
+      { error: 'Erro ao criar projeto' },
+      { status: 500 }
+    )
+  }
 }
