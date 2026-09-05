@@ -93,6 +93,7 @@ export default function NovoProjetoPage() {
         throw new Error(data.error || "Erro ao criar projeto");
       }
 
+      router.refresh();
       router.push("/projetos");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao criar projeto");

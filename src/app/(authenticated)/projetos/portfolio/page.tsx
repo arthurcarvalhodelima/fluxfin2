@@ -1,49 +1,24 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { prisma } from "@/lib/prisma";
 import GanttChart from "@/components/GanttChart";
-import LoadingSpinner from "@/components/LoadingSpinner";
 
-interface ProjectData {
-  id: string;
-  codigo: string;
-  titulo: string;
-  dataInicio: string;
-  dataTermino: string;
-  status: string;
-  progresso: number;
-}
+export const dynamic = "force-dynamic";
 
-export default function PortfolioPage() {
-  const [projects, setProjects] = useState<ProjectData[]>([]);
-  const [loading, setLoading] = useState(true);
+export default async function PortfolioPage() {
+  const projetos = await prisma.projeto.findMany({
+    where: { deletedAt: null },
+    orderBy: { criadoEm: "desc" },
+    take: 500,
+  });
 
-  useEffect(() => {
-    fetch("/api/projetos?limit=500")
-      .then((res) => res.json())
-      .then((json) => {
-        const mapped = (json.projetos || []).map((p: Record<string, unknown>) => ({
-          id: p.id as string,
-          codigo: p.codigo as string,
-          titulo: p.titulo as string,
-          dataInicio: p.dataInicio as string,
-          dataTermino: p.dataTermino as string,
-          status: p.status as string,
-          progresso: (p.progressoFisico as number) ?? 0,
-        }));
-        setProjects(mapped);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  const projects = projetos.map((p) => ({
+    id: p.id,
+    codigo: p.codigo,
+    titulo: p.titulo,
+    dataInicio: p.dataInicio.toISOString(),
+    dataTermino: p.dataTermino.toISOString(),
+    status: p.status,
+    progresso: Number(p.progressoFisico) ?? 0,
+  }));
 
   const total = projects.length;
   const active = projects.filter((p) => p.status === "ATIVO").length;
