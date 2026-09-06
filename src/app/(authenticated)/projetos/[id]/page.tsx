@@ -54,6 +54,7 @@ interface Projeto {
     dataExecucao: string | null;
     percentualPrevisto: number;
     _count: { despesas: number };
+    predecessorDe: { id: string; nome: string }[];
   }[];
 }
 
@@ -147,6 +148,7 @@ export default function ProjetoDetailPage() {
     descricao: "",
     dataPrevista: "",
     percentualPrevisto: 0,
+    predecessorIds: [] as string[],
   });
   const [milestoneLoading, setMilestoneLoading] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
@@ -186,16 +188,29 @@ export default function ProjetoDetailPage() {
         descricao: milestone.descricao || "",
         dataPrevista: milestone.dataPrevista.split("T")[0],
         percentualPrevisto: Number(milestone.percentualPrevisto),
+        predecessorIds: milestone.predecessorDe.map((p) => p.id),
       });
     } else {
       setEditingMilestone(null);
-      setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0 });
+      setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0, predecessorIds: [] });
     }
     setShowMilestoneModal(true);
   }
 
   async function handleSaveMilestone() {
     if (!milestoneForm.nome || !milestoneForm.dataPrevista) return;
+
+    if (milestoneForm.predecessorIds.length > 0 && projeto) {
+      const newDate = new Date(milestoneForm.dataPrevista + "T12:00:00");
+      const invalid = milestoneForm.predecessorIds
+        .map((pid) => projeto.milestones.find((m) => m.id === pid))
+        .find((m) => m && new Date(m.dataPrevista) >= newDate);
+      if (invalid) {
+        alert(`A data prevista deve ser posterior ao predecessor "${invalid!.nome}"`);
+        return;
+      }
+    }
+
     setMilestoneLoading(true);
 
     const url = editingMilestone
@@ -212,6 +227,9 @@ export default function ProjetoDetailPage() {
       dataExecucao: null,
       percentualPrevisto: milestoneForm.percentualPrevisto,
       _count: { despesas: 0 },
+      predecessorDe: projeto?.milestones
+        .filter((m) => milestoneForm.predecessorIds.includes(m.id))
+        .map((m) => ({ id: m.id, nome: m.nome })) ?? [],
     };
 
     setProjeto((prev) => {
@@ -231,7 +249,7 @@ export default function ProjetoDetailPage() {
     });
     setShowMilestoneModal(false);
     setEditingMilestone(null);
-    setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0 });
+    setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0, predecessorIds: [] });
 
     try {
       await fetch(url, {
@@ -242,6 +260,7 @@ export default function ProjetoDetailPage() {
           descricao: milestoneForm.descricao || undefined,
           dataPrevista: new Date(milestoneForm.dataPrevista).toISOString(),
           percentualPrevisto: milestoneForm.percentualPrevisto,
+          predecessorIds: milestoneForm.predecessorIds,
         }),
       });
       const res = await fetch(`/api/projetos/${id}`);
@@ -279,6 +298,18 @@ export default function ProjetoDetailPage() {
 
   async function handleToggleMilestone(milestone: NonNullable<Projeto["milestones"]>[0], execDate?: string) {
     const wasCompleted = !!milestone.dataExecucao;
+
+    if (!wasCompleted && milestone.predecessorDe.length > 0) {
+      const incomplete = milestone.predecessorDe.filter((p) => {
+        const m = projeto?.milestones.find((ms) => ms.id === p.id);
+        return m && !m.dataExecucao;
+      });
+      if (incomplete.length > 0) {
+        alert(`Nao e possivel concluir: o(s) predecessor(es) "${incomplete.map((p) => p.nome).join('", "')}" ainda nao foi(foram) concluido(s)`);
+        return;
+      }
+    }
+
     const newDate = wasCompleted ? null : (execDate ? new Date(execDate + "T12:00:00").toISOString() : new Date().toISOString());
     setProjeto((prev) => {
       if (!prev) return prev;
@@ -1109,7 +1140,7 @@ export default function ProjetoDetailPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-surface-hover">
-                  <p className="text-sm text-muted">Duracao Total</p>
+                  <p className="text-sm text-muted">Duração Total</p>
                   <p className="text-2xl font-bold text-foreground">{pertCpm.duracaoTotal} dias</p>
                 </div>
                 <div className="p-4 rounded-lg bg-surface-hover">
@@ -1141,7 +1172,7 @@ export default function ProjetoDetailPage() {
                     <thead>
                       <tr>
                         <th className="px-4 py-3">Atividade</th>
-                        <th className="px-4 py-3">Duracao (dias)</th>
+                        <th className="px-4 py-3">Duração (dias)</th>
                         <th className="px-4 py-3">Folga (dias)</th>
                         <th className="px-4 py-3">Predecessores</th>
                         <th className="px-4 py-3">Status</th>
@@ -1228,6 +1259,34 @@ export default function ProjetoDetailPage() {
                   onChange={(e) => setMilestoneForm({ ...milestoneForm, percentualPrevisto: Number(e.target.value) })}
                 />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="fluxfin-label">Predecessores (opcional)</label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3">
+                {projeto?.milestones
+                  .filter((m) => m.id !== editingMilestone)
+                  .map((m) => (
+                    <label key={m.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={milestoneForm.predecessorIds.includes(m.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setMilestoneForm({ ...milestoneForm, predecessorIds: [...milestoneForm.predecessorIds, m.id] });
+                          } else {
+                            setMilestoneForm({ ...milestoneForm, predecessorIds: milestoneForm.predecessorIds.filter((pid) => pid !== m.id) });
+                          }
+                        }}
+                        className="rounded border-border"
+                      />
+                      <span className="text-sm text-foreground">{m.nome}</span>
+                    </label>
+                  ))}
+                {projeto?.milestones.filter((m) => m.id !== editingMilestone).length === 0 && (
+                  <p className="text-xs text-muted">Nenhum outro marco disponivel</p>
+                )}
+              </div>
+              <p className="text-xs text-muted">Marcos selecionados devem ser concluidos antes deste.</p>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setShowMilestoneModal(false)} className="fluxfin-btn-ghost">

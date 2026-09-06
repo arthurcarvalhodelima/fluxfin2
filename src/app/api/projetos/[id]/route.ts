@@ -52,7 +52,7 @@ export async function GET(
         include: { usuario: { select: { nome: true } } },
         orderBy: { dataUpload: 'desc' },
       },
-      milestones: { orderBy: { dataPrevista: 'asc' }, include: { _count: { select: { despesas: true } } } },
+      milestones: { orderBy: { dataPrevista: 'asc' }, include: { _count: { select: { despesas: true } }, predecessorDe: { select: { id: true, nome: true } } } },
     },
   })
 

@@ -158,6 +158,8 @@ model Milestone {
 
   projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
   despesas        Despesa[]
+  predecessorDe   Milestone[] @relation("MilestonePredecessores")
+  successors      Milestone[] @relation("MilestonePredecessores")
 
   @@index([projetoId])
 }

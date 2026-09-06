@@ -11,6 +11,7 @@ const createMilestoneSchema = z.object({
   descricao: z.string().optional(),
   dataPrevista: z.string().datetime(),
   percentualPrevisto: z.number().min(0).max(100),
+  predecessorIds: z.array(z.string().uuid()).optional(),
 })
 
 const updateMilestoneSchema = z.object({
@@ -42,6 +43,7 @@ export async function GET(
     orderBy: { dataPrevista: 'asc' },
     include: {
       _count: { select: { despesas: true } },
+      predecessorDe: { select: { id: true, nome: true } },
     },
   })
 
@@ -75,6 +77,19 @@ export async function POST(
     return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
   }
 
+  if (parsed.data.predecessorIds && parsed.data.predecessorIds.length > 0) {
+    const predecessors = await prisma.milestone.findMany({
+      where: { id: { in: parsed.data.predecessorIds }, projetoId: id },
+    })
+    const newDate = new Date(parsed.data.dataPrevista)
+    const invalid = predecessors.find((p) => new Date(p.dataPrevista) >= newDate)
+    if (invalid) {
+      return NextResponse.json({
+        error: `A data prevista deve ser posterior ao predecessor "${invalid.nome}" (${new Date(invalid.dataPrevista).toLocaleDateString("pt-BR")})`,
+      }, { status: 400 })
+    }
+  }
+
   const milestone = await prisma.milestone.create({
     data: {
       projetoId: id,
@@ -82,7 +97,11 @@ export async function POST(
       descricao: parsed.data.descricao,
       dataPrevista: new Date(parsed.data.dataPrevista),
       percentualPrevisto: parsed.data.percentualPrevisto,
+      ...(parsed.data.predecessorIds && parsed.data.predecessorIds.length > 0
+        ? { predecessorDe: { connect: parsed.data.predecessorIds.map((pid) => ({ id: pid })) } }
+        : {}),
     },
+    include: { _count: { select: { despesas: true } } },
   })
 
   await recalcularProgresso(id)

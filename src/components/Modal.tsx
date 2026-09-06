@@ -50,9 +50,6 @@ export default function Modal({
     <div
       ref={overlayRef}
       className="fluxfin-modal-overlay"
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose();
-      }}
     >
       <div className={`fluxfin-modal ${sizeClasses[size]}`}>
         {title && (

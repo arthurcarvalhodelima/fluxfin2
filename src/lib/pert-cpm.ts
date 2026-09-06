@@ -24,23 +24,44 @@ export async function calcularCaminhoCritico(projetoId: string): Promise<CPMResu
 
   const milestones = await prisma.milestone.findMany({
     where: { projetoId },
-    orderBy: { dataPrevista: 'asc' }
+    orderBy: { dataPrevista: 'asc' },
+    include: {
+      predecessorDe: { select: { id: true } },
+    },
   });
 
   if (milestones.length === 0) {
     return { caminhoCritico: [], duracaoTotal: 0, folgas: {}, atividades: [] };
   }
 
-  const activities: Activity[] = milestones.map((m, index) => {
-    const duracaoMs = new Date(m.dataPrevista).getTime() - new Date(projeto.dataInicio).getTime();
-    const duracao = Math.max(1, Math.ceil(duracaoMs / (1000 * 60 * 60 * 24)));
+  const milestoneMap = new Map(milestones.map((m) => [m.id, m]));
+
+  const activities: Activity[] = milestones.map((m) => {
+    const predecessorIds = m.predecessorDe.map((p) => p.id);
+    let duracao: number;
+
+    if (predecessorIds.length > 0) {
+      const latestPredecessor = predecessorIds
+        .map((pid) => milestoneMap.get(pid))
+        .filter(Boolean)
+        .sort((a, b) => new Date(b!.dataPrevista).getTime() - new Date(a!.dataPrevista).getTime())[0];
+      duracao = Math.max(1, Math.ceil(
+        (new Date(m.dataPrevista).getTime() - new Date(latestPredecessor!.dataPrevista).getTime()) / (1000 * 60 * 60 * 24)
+      ));
+    } else {
+      duracao = Math.max(1, Math.ceil(
+        (new Date(m.dataPrevista).getTime() - new Date(projeto.dataInicio).getTime()) / (1000 * 60 * 60 * 24)
+      ));
+    }
 
     return {
       id: m.id,
       nome: m.nome,
-      predecessorIds: index > 0 ? [milestones[index - 1].id] : [],
+      predecessorIds,
       duracao,
-      dataInicio: index === 0 ? new Date(projeto.dataInicio) : milestones[index - 1].dataPrevista,
+      dataInicio: predecessorIds.length > 0
+        ? milestoneMap.get(predecessorIds[0])?.dataPrevista ?? new Date(projeto.dataInicio)
+        : new Date(projeto.dataInicio),
       dataTermino: new Date(m.dataPrevista),
     };
   });
