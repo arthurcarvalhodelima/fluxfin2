@@ -201,6 +201,29 @@ export default function ProjetoDetailPage() {
     }
   }
 
+  async function handleUpdateExpenseStatus(despesaId: string, newStatus: string) {
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        despesas: prev.despesas.map((d) =>
+          d.id === despesaId ? { ...d, status: newStatus } : d
+        ),
+      };
+    });
+    try {
+      await fetch(`/api/projetos/${id}/despesas/${despesaId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    }
+  }
+
   const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
 
   const evmMetrics = useMemo(() => {
@@ -553,7 +576,8 @@ export default function ProjetoDetailPage() {
                     <th className="px-4 py-3">Valor</th>
                     <th className="px-4 py-3">Data</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Responsavel</th>
+                    <th className="px-4 py-3">Responsável</th>
+                    <th className="px-4 py-3">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -570,12 +594,14 @@ export default function ProjetoDetailPage() {
                         {new Date(despesa.dataDespesa).toLocaleDateString("pt-BR")}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge
+                          <Badge
                           variant={
                             despesa.status === "PAGA"
                               ? "success"
                               : despesa.status === "APROVADA"
                               ? "info"
+                              : despesa.status === "REJEITADA"
+                              ? "danger"
                               : "warning"
                           }
                         >
@@ -583,6 +609,58 @@ export default function ProjetoDetailPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{despesa.usuario.nome}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {despesa.status === "PENDENTE" && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
+                                className="text-xs px-2 py-1 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
+                              >
+                                Aprovar
+                              </button>
+                              <button
+                                onClick={() => handleUpdateExpenseStatus(despesa.id, "REJEITADA")}
+                                className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                              >
+                                Rejeitar
+                              </button>
+                            </>
+                          )}
+                          {despesa.status === "APROVADA" && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateExpenseStatus(despesa.id, "PAGA")}
+                                className="text-xs px-2 py-1 rounded bg-primary/10 text-primary-dark hover:bg-primary/20 transition-colors"
+                              >
+                                Pagar
+                              </button>
+                              <button
+                                onClick={() => handleUpdateExpenseStatus(despesa.id, "PENDENTE")}
+                                className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                              >
+                                Reverter
+                              </button>
+                            </>
+                          )}
+                          {despesa.status === "REJEITADA" && (
+                            <button
+                              onClick={() => handleUpdateExpenseStatus(despesa.id, "PENDENTE")}
+                              className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                            >
+                              Reverter
+                            </button>
+                          )}
+                          {despesa.status === "PAGA" && (
+                            <button
+                              onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
+                              className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                            >
+                              Reverter
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
