@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkProjectAccess } from '@/lib/permissions'
+import { maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const createExpenseSchema = z.object({
@@ -24,6 +25,12 @@ export async function GET(
   }
 
   const { id } = await params
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
 
@@ -41,6 +48,14 @@ export async function GET(
     },
     orderBy: { dataDespesa: 'desc' },
   })
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    const masked = despesas.map(d => ({
+      ...d,
+      usuario: d.usuario ? { ...d.usuario, nome: maskName(d.usuario.nome) } : d.usuario,
+    }))
+    return NextResponse.json(masked)
+  }
 
   return NextResponse.json(despesas)
 }

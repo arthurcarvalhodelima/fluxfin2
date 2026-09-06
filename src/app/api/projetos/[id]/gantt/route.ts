@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkProjectAccess } from "@/lib/permissions";
 
 export async function GET(
   _request: NextRequest,
@@ -12,6 +13,11 @@ export async function GET(
   }
 
   const { id } = await params;
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema);
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+  }
 
   const projeto = await prisma.projeto.findUnique({
     where: { id },

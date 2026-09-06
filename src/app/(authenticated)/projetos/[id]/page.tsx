@@ -172,6 +172,10 @@ export default function ProjetoDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
   const [tabLoading, setTabLoading] = useState(false);
+  const [showRubricaModal, setShowRubricaModal] = useState(false);
+  const [editingRubrica, setEditingRubrica] = useState<string | null>(null);
+  const [rubricaForm, setRubricaForm] = useState({ nome: "", categoria: "", valorAlocado: "" });
+  const [rubricaLoading, setRubricaLoading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
@@ -419,6 +423,38 @@ export default function ProjetoDetailPage() {
       const json = await res.json();
       setProjeto(json);
     }
+  }
+
+  async function handleSaveRubrica() {
+    if (!rubricaForm.nome || !rubricaForm.categoria || !rubricaForm.valorAlocado) return;
+    setRubricaLoading(true);
+    const url = editingRubrica
+      ? `/api/projetos/${id}/rubricas/${editingRubrica}`
+      : `/api/projetos/${id}/rubricas`;
+    const res = await fetch(url, {
+      method: editingRubrica ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nome: rubricaForm.nome,
+        categoria: rubricaForm.categoria,
+        valorAlocado: parseFloat(rubricaForm.valorAlocado),
+      }),
+    });
+    if (res.ok) {
+      const saved = await res.json();
+      const saldo = Number(saved.valorAlocado) - Number(saved.valorGasto || 0);
+      const percentual = Number(saved.valorAlocado) > 0
+        ? (Number(saved.valorGasto || 0) / Number(saved.valorAlocado) * 100)
+        : 0;
+      const rubricaData = { ...saved, saldo, percentualGasto: percentual.toFixed(2) };
+      if (editingRubrica) {
+        setProjeto({ ...projeto!, rubricas: projeto!.rubricas.map((r) => r.id === editingRubrica ? rubricaData : r) });
+      } else {
+        setProjeto({ ...projeto!, rubricas: [...projeto!.rubricas, rubricaData] });
+      }
+      setShowRubricaModal(false);
+    }
+    setRubricaLoading(false);
   }
 
   async function handleAddMember() {
@@ -852,6 +888,14 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Rubricas Orçamentárias</h2>
+            {isAdmin && (
+              <button
+                onClick={() => { setEditingRubrica(null); setRubricaForm({ nome: "", categoria: "", valorAlocado: "" }); setShowRubricaModal(true); }}
+                className="fluxfin-btn-primary"
+              >
+                Nova Rubrica
+              </button>
+            )}
           </div>
           {projeto.rubricas.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhuma rubrica cadastrada</p>
@@ -866,6 +910,7 @@ export default function ProjetoDetailPage() {
                     <th className="px-4 py-3">Gasto</th>
                     <th className="px-4 py-3">Saldo</th>
                     <th className="px-4 py-3">Execução</th>
+                    {isAdmin && <th className="px-4 py-3">Ações</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -909,6 +954,32 @@ export default function ProjetoDetailPage() {
                             <span className="text-sm text-muted">{percentual.toFixed(0)}%</span>
                           </div>
                         </td>
+                        {isAdmin && (
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setEditingRubrica(rubrica.id); setRubricaForm({ nome: rubrica.nome, categoria: rubrica.categoria, valorAlocado: String(Number(rubrica.valorAlocado)) }); setShowRubricaModal(true); }}
+                                className="p-1 text-muted hover:text-primary transition-colors"
+                                title="Editar"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                              </button>
+                              {Number(rubrica.valorGasto) === 0 && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm("Excluir esta rubrica?")) return;
+                                    const res = await fetch(`/api/projetos/${id}/rubricas/${rubrica.id}`, { method: "DELETE" });
+                                    if (res.ok) setProjeto({ ...projeto!, rubricas: projeto!.rubricas.filter((r) => r.id !== rubrica.id) });
+                                  }}
+                                  className="p-1 text-muted hover:text-danger transition-colors"
+                                  title="Excluir"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -1514,6 +1585,67 @@ export default function ProjetoDetailPage() {
                 className="fluxfin-btn-primary"
               >
                 Concluir
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showRubricaModal && (
+        <Modal
+          isOpen={showRubricaModal}
+          onClose={() => setShowRubricaModal(false)}
+          title={editingRubrica ? "Editar Rubrica" : "Nova Rubrica"}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Nome</label>
+              <input
+                type="text"
+                value={rubricaForm.nome}
+                onChange={(e) => setRubricaForm({ ...rubricaForm, nome: e.target.value })}
+                className="fluxfin-input w-full"
+                placeholder="Ex: Mão de obra técnica"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Categoria</label>
+              <select
+                value={rubricaForm.categoria}
+                onChange={(e) => setRubricaForm({ ...rubricaForm, categoria: e.target.value })}
+                className="fluxfin-input w-full"
+              >
+                <option value="">Selecione...</option>
+                {Object.entries(categoriaLabels).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Valor Alocado (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={rubricaForm.valorAlocado}
+                onChange={(e) => setRubricaForm({ ...rubricaForm, valorAlocado: e.target.value })}
+                className="fluxfin-input w-full"
+                placeholder="0,00"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowRubricaModal(false)}
+                className="fluxfin-btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveRubrica}
+                disabled={rubricaLoading || !rubricaForm.nome || !rubricaForm.categoria || !rubricaForm.valorAlocado}
+                className="fluxfin-btn-primary disabled:opacity-50"
+              >
+                {rubricaLoading ? "Salvando..." : editingRubrica ? "Salvar" : "Criar"}
               </button>
             </div>
           </div>

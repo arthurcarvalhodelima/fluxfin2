@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
   projetos: "Projetos",
+  despesas: "Despesas",
   usuarios: "Usuários",
   relatorios: "Relatórios",
 };

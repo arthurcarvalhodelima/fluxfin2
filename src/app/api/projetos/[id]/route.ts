@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkProjectAccess } from '@/lib/permissions'
-import { maskEmail } from '@/lib/lgpd'
+import { maskEmail, maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const updateProjectSchema = z.object({
@@ -53,7 +53,7 @@ export async function GET(
       ...projeto,
       equipeProjeto: projeto.equipeProjeto.map(e => ({
         ...e,
-        usuario: { ...e.usuario, email: maskEmail(e.usuario.email) },
+        usuario: { ...e.usuario, nome: maskName(e.usuario.nome), email: maskEmail(e.usuario.email) },
       })),
     }
     return NextResponse.json(masked)

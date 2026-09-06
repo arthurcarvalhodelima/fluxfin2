@@ -1,11 +1,21 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getUserProjectIds } from "@/lib/permissions";
 import GanttChart from "@/components/GanttChart";
 
 export const dynamic = "force-dynamic";
 
 export default async function PortfolioPage() {
+  const session = await auth();
+  const userProjectIds = await getUserProjectIds(session!.user.id, session!.user.papelSistema);
+
+  const where: Record<string, unknown> = { deletedAt: null };
+  if (userProjectIds.length > 0) {
+    where.id = { in: userProjectIds };
+  }
+
   const projetos = await prisma.projeto.findMany({
-    where: { deletedAt: null },
+    where,
     orderBy: { criadoEm: "desc" },
     take: 500,
   });

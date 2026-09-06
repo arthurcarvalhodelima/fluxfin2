@@ -14,7 +14,7 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl)
   }
 
-  if (pathname.startsWith('/usuarios') && req.auth.user?.papelSistema !== 'ADMIN') {
+  if ((pathname.startsWith('/usuarios') || pathname.startsWith('/api/usuarios')) && req.auth.user?.papelSistema !== 'ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', req.nextUrl.origin))
   }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
-import { maskEmail } from '@/lib/lgpd'
+import { maskEmail, maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
@@ -49,7 +49,8 @@ export async function GET(
   }
 
   if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ ...usuario, email: maskEmail(usuario.email) })
+    const { equipeProjeto, ...rest } = usuario
+    return NextResponse.json({ ...rest, nome: maskName(usuario.nome), email: maskEmail(usuario.email) })
   }
 
   return NextResponse.json(usuario)

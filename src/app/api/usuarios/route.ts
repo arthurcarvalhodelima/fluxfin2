@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
-import { maskEmail } from '@/lib/lgpd'
+import { maskEmail, maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   ])
 
   if (session.user.papelSistema !== 'ADMIN') {
-    const masked = usuarios.map(u => ({ ...u, email: maskEmail(u.email) }))
+    const masked = usuarios.map(u => ({ ...u, nome: maskName(u.nome), email: maskEmail(u.email) }))
     return NextResponse.json({ usuarios: masked, total, page, limit })
   }
 

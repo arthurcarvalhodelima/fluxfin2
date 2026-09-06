@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { getUserProjectIds } from '@/lib/permissions'
+import { maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const createProjectSchema = z.object({
@@ -72,6 +73,17 @@ export async function GET(request: NextRequest) {
     }),
     prisma.projeto.count({ where }),
   ])
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    const masked = projetos.map(p => ({
+      ...p,
+      equipeProjeto: p.equipeProjeto.map(e => ({
+        ...e,
+        usuario: { ...e.usuario, nome: maskName(e.usuario.nome) },
+      })),
+    }))
+    return NextResponse.json({ projetos: masked, total, page, limit })
+  }
 
   return NextResponse.json({ projetos, total, page, limit })
 }

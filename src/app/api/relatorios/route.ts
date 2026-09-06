@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { checkProjectAccess } from '@/lib/permissions'
-import { maskEmail } from '@/lib/lgpd'
+import { maskEmail, maskName } from '@/lib/lgpd'
 import { z } from 'zod'
 
 const categoriaLabels: Record<string, string> = {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
       status: d.status,
       rubrica: d.rubrica.nome,
       categoria: categoriaLabels[d.rubrica.categoria] || d.rubrica.categoria,
-      responsavel: d.usuario.nome,
+      responsavel: session.user.papelSistema !== 'ADMIN' ? maskName(d.usuario.nome) : d.usuario.nome,
     }))
     reportData.timelineDespesas = timelineDespesas
     reportData.totalDespesas = projeto.despesas.length
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
   if (tipo === 'EQUIPE' || tipo === 'COMPLETO') {
     reportData.equipe = (projeto.equipeProjeto as any[]).map((e: any) => ({
-      nome: e.usuario.nome,
+      nome: session.user.papelSistema !== 'ADMIN' ? maskName(e.usuario.nome) : e.usuario.nome,
       email: session.user.papelSistema !== 'ADMIN' ? maskEmail(e.usuario.email) : e.usuario.email,
       papel: e.papel,
     }))
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
       nome: d.nomeArquivo,
       extensao: d.extensao,
       dataUpload: d.dataUpload,
-      autor: d.usuario.nome,
+      autor: session.user.papelSistema !== 'ADMIN' ? maskName(d.usuario.nome) : d.usuario.nome,
     }))
     reportData.milestones = (projeto.milestones as any[]).map((m: any) => ({
       nome: m.nome,

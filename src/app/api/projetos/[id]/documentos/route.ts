@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkProjectAccess } from '@/lib/permissions'
+import { maskName } from '@/lib/lgpd'
 
 const ALLOWED_EXTENSIONS = ['pdf', 'xlsx', 'xls', 'doc', 'docx']
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -30,6 +31,14 @@ export async function GET(
     },
     orderBy: { dataUpload: 'desc' },
   })
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    const masked = documentos.map(d => ({
+      ...d,
+      usuario: d.usuario ? { ...d.usuario, nome: maskName(d.usuario.nome) } : d.usuario,
+    }))
+    return NextResponse.json(masked)
+  }
 
   return NextResponse.json(documentos)
 }
@@ -112,7 +121,7 @@ export async function POST(
       extensao: documento.extensao,
       dataUpload: documento.dataUpload,
       urlArmazenamento: documento.urlArmazenamento,
-      usuario: { id: session.user.id, nome: session.user.nome },
+      usuario: { id: session.user.id, nome: session.user.papelSistema !== 'ADMIN' ? maskName(session.user.nome) : session.user.nome },
     }, { status: 201 })
   } catch (err) {
     return NextResponse.json({ error: `Erro ao salvar arquivo: ${(err as Error).message}` }, { status: 500 })

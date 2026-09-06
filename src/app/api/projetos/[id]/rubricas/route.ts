@@ -27,6 +27,11 @@ export async function GET(
 
   const { id } = await params
 
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
   const projeto = await prisma.projeto.findUnique({ where: { id } })
   if (!projeto) {
     return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
