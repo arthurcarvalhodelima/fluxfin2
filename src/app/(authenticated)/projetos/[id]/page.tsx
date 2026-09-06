@@ -129,10 +129,10 @@ function StatusDropdown({ projeto, onStatusChange }: { projeto: { id: string; st
 }
 
 const categoriaLabels: Record<string, string> = {
-  RECURSOS_HUMANOS: "Recursos Humanos",
+  RECURSOS_HUMANOS: "Recursos Humanos (RH)",
   SERVICOS_TERCEIROS: "Serviços de Terceiros",
   MATERIAIS_CONSUMO: "Materiais de Consumo",
-  MATERIAIS_PERMANENTES: "Materiais Permanentes",
+  MATERIAIS_PERMANENTES: "Materiais Permanentes e Equipamentos",
   VIAGENS_DIARIAS: "Viagens e Diárias",
   CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
 };

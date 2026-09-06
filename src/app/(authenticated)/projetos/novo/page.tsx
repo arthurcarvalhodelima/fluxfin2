@@ -6,10 +6,10 @@ import { useSession } from "next-auth/react";
 import FormField from "@/components/FormField";
 
 const CATEGORIAS = [
-  { value: "RECURSOS_HUMANOS", label: "Recursos Humanos" },
+  { value: "RECURSOS_HUMANOS", label: "Recursos Humanos (RH)" },
   { value: "SERVICOS_TERCEIROS", label: "Serviços de Terceiros" },
   { value: "MATERIAIS_CONSUMO", label: "Materiais de Consumo" },
-  { value: "MATERIAIS_PERMANENTES", label: "Materiais Permanentes" },
+  { value: "MATERIAIS_PERMANENTES", label: "Materiais Permanentes e Equipamentos" },
   { value: "VIAGENS_DIARIAS", label: "Viagens e Diárias" },
   { value: "CUSTOS_ADMINISTRATIVOS", label: "Custos Administrativos" },
 ];

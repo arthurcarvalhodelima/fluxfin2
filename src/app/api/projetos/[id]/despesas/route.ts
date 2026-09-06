@@ -107,31 +107,37 @@ export async function POST(
     }
   }
 
-  const despesa = await prisma.$transaction(async (tx) => {
-    const currentRubrica = await tx.rubrica.findUnique({
-      where: { id: parsed.data.rubricaId },
+  let despesa
+  try {
+    despesa = await prisma.$transaction(async (tx) => {
+      const currentRubrica = await tx.rubrica.findUnique({
+        where: { id: parsed.data.rubricaId },
+      })
+
+      const saldo = Number(currentRubrica!.valorAlocado) - Number(currentRubrica!.valorGasto)
+      if (saldo < parsed.data.valor) {
+        throw new Error(`Saldo insuficiente na rubrica. Disponível: ${saldo}`)
+      }
+
+      const expense = await tx.despesa.create({
+        data: {
+          projetoId: id,
+          rubricaId: parsed.data.rubricaId,
+          usuarioId: session.user.id,
+          descricao: parsed.data.descricao,
+          valor: parsed.data.valor,
+          dataDespesa: new Date(parsed.data.dataDespesa),
+          justificativa: parsed.data.justificativa,
+          milestoneId: parsed.data.milestoneId ?? null,
+        },
+      })
+
+      return expense
     })
-
-    const saldo = Number(currentRubrica!.valorAlocado) - Number(currentRubrica!.valorGasto)
-    if (saldo < parsed.data.valor) {
-      throw new Error(`Saldo insuficiente na rubrica. Disponível: ${saldo}`)
-    }
-
-    const expense = await tx.despesa.create({
-      data: {
-        projetoId: id,
-        rubricaId: parsed.data.rubricaId,
-        usuarioId: session.user.id,
-        descricao: parsed.data.descricao,
-        valor: parsed.data.valor,
-        dataDespesa: new Date(parsed.data.dataDespesa),
-        justificativa: parsed.data.justificativa,
-        milestoneId: parsed.data.milestoneId ?? null,
-      },
-    })
-
-    return expense
-  })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao criar despesa'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
 
   await createAuditLog({
     userId: session.user.id,

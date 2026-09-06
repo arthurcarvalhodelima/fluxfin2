@@ -15,10 +15,10 @@ interface Milestone {
 }
 
 const categoriaLabels: Record<string, string> = {
-  RECURSOS_HUMANOS: "Recursos Humanos",
+  RECURSOS_HUMANOS: "Recursos Humanos (RH)",
   SERVICOS_TERCEIROS: "Serviços de Terceiros",
   MATERIAIS_CONSUMO: "Materiais de Consumo",
-  MATERIAIS_PERMANENTES: "Materiais Permanentes",
+  MATERIAIS_PERMANENTES: "Materiais Permanentes e Equipamentos",
   VIAGENS_DIARIAS: "Viagens e Diárias",
   CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
 };
@@ -52,19 +52,13 @@ export default function ExpenseForm({
   const insufficientBalance = saldo !== null && valorNum > saldo;
 
   useEffect(() => {
-    if (!rubricaId) return;
-
-    let cancelled = false;
-    fetch(`/api/projetos/${projetoId}/rubricas/${rubricaId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!cancelled) setSaldo(json.saldo ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setSaldo(null);
-      });
-    return () => { cancelled = true; };
-  }, [projetoId, rubricaId]);
+    if (!rubricaId) {
+      setSaldo(null);
+      return;
+    }
+    const selected = rubricas.find((r) => r.id === rubricaId);
+    setSaldo(selected ? selected.saldo : null);
+  }, [rubricaId, rubricas]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -16,6 +16,33 @@ const updateRubricSchema = z.object({
   valorAlocado: z.number().positive().optional(),
 })
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; rubricaId: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const { id, rubricaId } = await params
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  const rubrica = await prisma.rubrica.findFirst({ where: { id: rubricaId, projetoId: id } })
+  if (!rubrica) {
+    return NextResponse.json({ error: 'Rubrica não encontrada' }, { status: 404 })
+  }
+
+  return NextResponse.json({
+    ...rubrica,
+    saldo: Number(rubrica.valorAlocado) - Number(rubrica.valorGasto),
+  })
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; rubricaId: string }> }

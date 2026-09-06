@@ -53,26 +53,38 @@ export async function PATCH(
   const wasCounted = shouldCount(oldStatus)
   const willCount = shouldCount(newStatus)
 
-  const despesa = await prisma.$transaction(async (tx) => {
-    const updated = await tx.despesa.update({
-      where: { id: despesaId },
-      data: { status: newStatus },
+  let despesa
+  try {
+    despesa = await prisma.$transaction(async (tx) => {
+      if (!wasCounted && willCount) {
+        const rubrica = await tx.rubrica.findUnique({ where: { id: existing.rubricaId } })
+        if (!rubrica) {
+          throw new Error('Rubrica não encontrada')
+        }
+        const saldo = Number(rubrica.valorAlocado) - Number(rubrica.valorGasto)
+        if (saldo < Number(existing.valor)) {
+          throw new Error(`Saldo insuficiente na rubrica. Disponível: ${saldo}`)
+        }
+        await tx.rubrica.update({
+          where: { id: existing.rubricaId },
+          data: { valorGasto: { increment: Number(existing.valor) } },
+        })
+      } else if (wasCounted && !willCount) {
+        await tx.rubrica.update({
+          where: { id: existing.rubricaId },
+          data: { valorGasto: { decrement: Number(existing.valor) } },
+        })
+      }
+
+      return tx.despesa.update({
+        where: { id: despesaId },
+        data: { status: newStatus },
+      })
     })
-
-    if (!wasCounted && willCount) {
-      await tx.rubrica.update({
-        where: { id: existing.rubricaId },
-        data: { valorGasto: { increment: Number(existing.valor) } },
-      })
-    } else if (wasCounted && !willCount) {
-      await tx.rubrica.update({
-        where: { id: existing.rubricaId },
-        data: { valorGasto: { decrement: Number(existing.valor) } },
-      })
-    }
-
-    return updated
-  })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Erro ao atualizar despesa'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
 
   await createAuditLog({
     userId: session.user.id,

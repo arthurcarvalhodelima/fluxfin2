@@ -1,4 +1,4 @@
-import { PrismaClient, PapelSistema, StatusProjeto, StatusDespesa } from '@prisma/client';
+import { PrismaClient, PapelSistema, StatusProjeto } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -20,11 +20,11 @@ const SUFIXOS = [
 ];
 
 const RUBRICAS_BASE = [
-  { nome: 'Recursos Humanos', categoria: 'RECURSOS_HUMANOS', percentual: 40 },
+  { nome: 'Recursos Humanos (RH)', categoria: 'RECURSOS_HUMANOS', percentual: 40 },
   { nome: 'Serviços de Terceiros', categoria: 'SERVICOS_TERCEIROS', percentual: 20 },
   { nome: 'Materiais de Consumo', categoria: 'MATERIAIS_CONSUMO', percentual: 10 },
-  { nome: 'Materiais Permanentes', categoria: 'MATERIAIS_PERMANENTES', percentual: 15 },
-  { nome: 'Viagens e Estadias', categoria: 'VIAGENS_DIARIAS', percentual: 5 },
+  { nome: 'Materiais Permanentes e Equipamentos', categoria: 'MATERIAIS_PERMANENTES', percentual: 15 },
+  { nome: 'Viagens e Diárias', categoria: 'VIAGENS_DIARIAS', percentual: 5 },
   { nome: 'Custos Administrativos', categoria: 'CUSTOS_ADMINISTRATIVOS', percentual: 10 },
 ];
 
@@ -34,19 +34,6 @@ const MILESTONE_NAMES = [
   'Fase 3 - Desenvolvimento',
   'Fase 4 - Implementação e Testes',
   'Fase 5 - Validação e Relatório Final',
-];
-
-const DESPESA_DESCRIPTIONS = [
-  'Compra de equipamentos de laboratório',
-  'Contratação de consultoria técnica',
-  'Serviços de manutenção preventiva',
-  'Aquisição de material de consumo',
-  'Passagem aérea para conferência',
-  'Hospedagem em evento técnico',
-  'Aluguel de equipamentos especiais',
-  'Serviços de processamento de dados',
-  'Compra de software licenciado',
-  'Material de escritório e impressão',
 ];
 
 function randomInt(min: number, max: number): number {
@@ -253,85 +240,10 @@ async function main() {
 
   console.log(`✅ ${totalMilestones} milestones criados`);
 
-  console.log('\n📊 Criando despesas para 30% dos projetos...');
-  const allRubrics = await prisma.rubrica.findMany();
-  const rubricsByProject = new Map<string, typeof allRubrics>();
-  for (const r of allRubrics) {
-    if (!rubricsByProject.has(r.projetoId)) {
-      rubricsByProject.set(r.projetoId, []);
-    }
-    rubricsByProject.get(r.projetoId)!.push(r);
-  }
-
-  const allMilestones = await prisma.milestone.findMany();
-  const milestonesByProject = new Map<string, typeof allMilestones>();
-  for (const m of allMilestones) {
-    if (!milestonesByProject.has(m.projetoId)) {
-      milestonesByProject.set(m.projetoId, []);
-    }
-    milestonesByProject.get(m.projetoId)!.push(m);
-  }
-
-  const projectsWithExpenses = projects.filter(() => Math.random() < 0.3);
-  let totalExpenses = 0;
-
-  for (const project of projectsWithExpenses) {
-    const rubrics = rubricsByProject.get(project.id) || [];
-    const milestones = milestonesByProject.get(project.id) || [];
-    const expenseUser = randomChoice([admin, ...coordenadores]);
-
-    for (const rubric of rubrics) {
-      const maxForRubric = Number(rubric.valorAlocado);
-      const numExpenses = randomInt(1, 4);
-      let remaining = maxForRubric;
-
-      for (let e = 0; e < numExpenses && remaining > 0; e++) {
-        const maxValue = Math.min(remaining * 0.6, remaining);
-        const value = randomInt(Math.round(maxValue * 0.1), Math.round(maxValue));
-        if (value <= 0) continue;
-
-        const expenseMonth = randomInt(0, project.duration - 1);
-        const expenseDate = addMonths(project.startDate, expenseMonth);
-
-        const statuses: StatusDespesa[] = [
-          StatusDespesa.PENDENTE,
-          StatusDespesa.APROVADA,
-          StatusDespesa.PAGA,
-        ];
-
-        const milestoneId = Math.random() < 0.5 && milestones.length > 0
-          ? randomChoice(milestones).id
-          : null;
-
-        const expenseStatus = randomChoice(statuses);
-
-        const expense = await prisma.despesa.create({
-          data: {
-            projetoId: project.id,
-            rubricaId: rubric.id,
-            usuarioId: expenseUser.id,
-            descricao: randomChoice(DESPESA_DESCRIPTIONS),
-            valor: value,
-            dataDespesa: expenseDate,
-            status: expenseStatus,
-            milestoneId,
-          },
-        });
-
-        if (expenseStatus === StatusDespesa.APROVADA || expenseStatus === StatusDespesa.PAGA) {
-          await prisma.rubrica.update({
-            where: { id: rubric.id },
-            data: { valorGasto: { increment: value } },
-          });
-        }
-
-        remaining -= value;
-        totalExpenses++;
-      }
-    }
-  }
-
-  console.log(`✅ ${totalExpenses} despesas criadas em ${projectsWithExpenses.length} projetos`);
+  console.log('\n🧹 Limpando despesas de seed anteriores...');
+  await prisma.despesa.deleteMany();
+  await prisma.rubrica.updateMany({ data: { valorGasto: 0 } });
+  console.log('✅ Despesas limpas e valorGasto resetado');
 
   console.log('\n🎉 Seed concluído com sucesso!');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -340,7 +252,6 @@ async function main() {
   console.log(`   📁 Projetos: ${projects.length}`);
   console.log(`   💰 Rubricas: ${projects.length * 6}`);
   console.log(`   👥 Equipes: ${teamData.length}`);
-  console.log(`   📝 Despesas: ${totalExpenses}`);
   console.log(`   🏁 Milestones: ${totalMilestones}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
