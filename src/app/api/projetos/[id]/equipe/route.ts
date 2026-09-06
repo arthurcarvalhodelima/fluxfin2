@@ -120,3 +120,64 @@ export async function POST(
 
   return NextResponse.json(equipe, { status: 201 })
 }
+
+const removeMemberSchema = z.object({
+  usuarioId: z.string().uuid(),
+})
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  const { id } = await params
+  const body = await request.json()
+  const parsed = removeMemberSchema.safeParse(body)
+
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  }
+
+  const existing = await prisma.equipeProjeto.findUnique({
+    where: { projetoId_usuarioId: { projetoId: id, usuarioId: parsed.data.usuarioId } },
+  })
+  if (!existing) {
+    return NextResponse.json({ error: 'Membro não encontrado na equipe' }, { status: 404 })
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.equipeProjeto.delete({
+      where: { id: existing.id },
+    })
+
+    if (existing.papel === 'COORDENADOR') {
+      const remaining = await tx.equipeProjeto.findMany({
+        where: { projetoId: id },
+      })
+      const hasCoordenador = remaining.some(m => m.papel === 'COORDENADOR')
+      if (!hasCoordenador) {
+        throw new Error('A equipe deve ter pelo menos um COORDENADOR')
+      }
+    }
+  })
+
+  await createAuditLog({
+    userId: session.user.id,
+    projetoId: id,
+    entity: 'EquipeProjeto',
+    entityId: existing.id,
+    action: 'REMOVER_MEMBRO',
+    oldData: { usuarioId: parsed.data.usuarioId, papel: existing.papel },
+  })
+
+  return NextResponse.json({ success: true })
+}

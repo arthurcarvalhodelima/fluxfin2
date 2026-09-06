@@ -149,6 +149,12 @@ export default function ProjetoDetailPage() {
     percentualPrevisto: 0,
   });
   const [milestoneLoading, setMilestoneLoading] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; nome: string; email: string }[]>([]);
+  const [newMemberId, setNewMemberId] = useState("");
+  const [newMemberPapel, setNewMemberPapel] = useState<"COORDENADOR" | "PESQUISADOR" | "BOLSISTA">("PESQUISADOR");
+  const [completingMilestone, setCompletingMilestone] = useState<NonNullable<Projeto["milestones"]>[0] | null>(null);
+  const [completionDate, setCompletionDate] = useState("");
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
@@ -192,12 +198,42 @@ export default function ProjetoDetailPage() {
     if (!milestoneForm.nome || !milestoneForm.dataPrevista) return;
     setMilestoneLoading(true);
 
-    try {
-      const url = editingMilestone
-        ? `/api/projetos/${id}/milestones/${editingMilestone}`
-        : `/api/projetos/${id}/milestones`;
-      const method = editingMilestone ? "PUT" : "POST";
+    const url = editingMilestone
+      ? `/api/projetos/${id}/milestones/${editingMilestone}`
+      : `/api/projetos/${id}/milestones`;
+    const method = editingMilestone ? "PUT" : "POST";
+    const tempId = editingMilestone || `temp-${Date.now()}`;
 
+    const optimisticMilestone = {
+      id: tempId,
+      nome: milestoneForm.nome,
+      descricao: milestoneForm.descricao || null,
+      dataPrevista: new Date(milestoneForm.dataPrevista).toISOString(),
+      dataExecucao: null,
+      percentualPrevisto: milestoneForm.percentualPrevisto,
+      _count: { despesas: 0 },
+    };
+
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      if (editingMilestone) {
+        return {
+          ...prev,
+          milestones: prev.milestones.map((m) =>
+            m.id === editingMilestone ? optimisticMilestone : m
+          ),
+        };
+      }
+      return {
+        ...prev,
+        milestones: [...prev.milestones, optimisticMilestone],
+      };
+    });
+    setShowMilestoneModal(false);
+    setEditingMilestone(null);
+    setMilestoneForm({ nome: "", descricao: "", dataPrevista: "", percentualPrevisto: 0 });
+
+    try {
       await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -208,13 +244,13 @@ export default function ProjetoDetailPage() {
           percentualPrevisto: milestoneForm.percentualPrevisto,
         }),
       });
-
       const res = await fetch(`/api/projetos/${id}`);
       const json = await res.json();
       setProjeto(json);
-      setShowMilestoneModal(false);
     } catch {
-      // handle error
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
     } finally {
       setMilestoneLoading(false);
     }
@@ -223,32 +259,48 @@ export default function ProjetoDetailPage() {
   async function handleDeleteMilestone(milestoneId: string) {
     if (!confirm("Tem certeza que deseja excluir este marco?")) return;
 
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        milestones: prev.milestones.filter((m) => m.id !== milestoneId),
+      };
+    });
     try {
       await fetch(`/api/projetos/${id}/milestones/${milestoneId}`, {
         method: "DELETE",
       });
+    } catch {
       const res = await fetch(`/api/projetos/${id}`);
       const json = await res.json();
       setProjeto(json);
-    } catch {
-      // handle error
     }
   }
 
-  async function handleToggleMilestone(milestone: NonNullable<Projeto["milestones"]>[0]) {
+  async function handleToggleMilestone(milestone: NonNullable<Projeto["milestones"]>[0], execDate?: string) {
+    const wasCompleted = !!milestone.dataExecucao;
+    const newDate = wasCompleted ? null : (execDate ? new Date(execDate + "T12:00:00").toISOString() : new Date().toISOString());
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        milestones: prev.milestones.map((m) =>
+          m.id === milestone.id
+            ? { ...m, dataExecucao: newDate }
+            : m
+        ),
+      };
+    });
     try {
       await fetch(`/api/projetos/${id}/milestones/${milestone.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dataExecucao: milestone.dataExecucao ? null : new Date().toISOString(),
-        }),
+        body: JSON.stringify({ dataExecucao: newDate }),
       });
+    } catch {
       const res = await fetch(`/api/projetos/${id}`);
       const json = await res.json();
       setProjeto(json);
-    } catch {
-      // handle error
     }
   }
 
@@ -291,6 +343,75 @@ export default function ProjetoDetailPage() {
       const json = await res.json();
       setProjeto(json);
     }
+  }
+
+  async function handleAddMember() {
+    if (!newMemberId) return;
+    const user = availableUsers.find((u) => u.id === newMemberId);
+    if (!user) return;
+
+    const tempId = `temp-${Date.now()}`;
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        equipeProjeto: [
+          ...prev.equipeProjeto,
+          { id: tempId, papel: newMemberPapel, usuario: { id: user.id, nome: user.nome, email: user.email } },
+        ],
+      };
+    });
+    setShowAddMemberModal(false);
+    setNewMemberId("");
+    setNewMemberPapel("PESQUISADOR");
+
+    try {
+      await fetch(`/api/projetos/${id}/equipe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId: newMemberId, papel: newMemberPapel }),
+      });
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    } catch {
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    }
+  }
+
+  async function handleRemoveMember(usuarioId: string) {
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        equipeProjeto: prev.equipeProjeto.filter((m) => m.usuario.id !== usuarioId),
+      };
+    });
+    try {
+      await fetch(`/api/projetos/${id}/equipe`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuarioId }),
+      });
+    } catch {
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    }
+  }
+
+  function openAddMemberModal() {
+    setShowAddMemberModal(true);
+    fetch(`/api/usuarios?limit=100`)
+      .then((res) => res.json())
+      .then((json) => {
+        const users = json.usuarios ?? [];
+        const membroIds = projeto?.equipeProjeto.map((m) => m.usuario.id) ?? [];
+        setAvailableUsers(users.filter((u: { id: string; ativo: boolean }) => u.ativo && !membroIds.includes(u.id)));
+      })
+      .catch(() => {});
   }
 
   const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
@@ -535,6 +656,9 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Equipe do Projeto</h2>
+            <button onClick={openAddMemberModal} className="fluxfin-btn-primary">
+              Adicionar Membro
+            </button>
           </div>
           {projeto.equipeProjeto.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum membro na equipe</p>
@@ -554,9 +678,23 @@ export default function ProjetoDetailPage() {
                       <p className="text-sm text-muted">{membro.usuario.email}</p>
                     </div>
                   </div>
-                  <Badge variant={membro.papel === "COORDENADOR" ? "primary" : "default"}>
-                    {membro.papel}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={membro.papel === "COORDENADOR" ? "primary" : "default"}>
+                      {membro.papel}
+                    </Badge>
+                    {!(membro.papel === "COORDENADOR" && projeto.equipeProjeto.filter((m) => m.papel === "COORDENADOR").length === 1) && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Remover ${membro.usuario.nome} da equipe?`)) {
+                            handleRemoveMember(membro.usuario.id);
+                          }
+                        }}
+                        className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -891,7 +1029,14 @@ export default function ProjetoDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleToggleMilestone(m)}
+                        onClick={() => {
+                          if (m.dataExecucao) {
+                            handleToggleMilestone(m);
+                          } else {
+                            setCompletingMilestone(m);
+                            setCompletionDate(new Date().toISOString().split("T")[0]);
+                          }
+                        }}
                         className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
                           m.dataExecucao
                             ? "text-warning hover:bg-warning/10"
@@ -1094,6 +1239,101 @@ export default function ProjetoDetailPage() {
                 className="fluxfin-btn-primary disabled:opacity-50"
               >
                 {milestoneLoading ? "Salvando..." : editingMilestone ? "Salvar" : "Criar"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showAddMemberModal && (
+        <Modal
+          isOpen={showAddMemberModal}
+          onClose={() => setShowAddMemberModal(false)}
+          title="Adicionar Membro a Equipe"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Usuario</label>
+              <select
+                value={newMemberId}
+                onChange={(e) => setNewMemberId(e.target.value)}
+                className="fluxfin-input w-full"
+              >
+                <option value="">Selecione um usuario...</option>
+                {availableUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.nome} ({u.email})
+                  </option>
+                ))}
+              </select>
+              {availableUsers.length === 0 && (
+                <p className="text-xs text-muted mt-1">Nenhum usuario disponivel para adicionar</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Papel</label>
+              <select
+                value={newMemberPapel}
+                onChange={(e) => setNewMemberPapel(e.target.value as typeof newMemberPapel)}
+                className="fluxfin-input w-full"
+              >
+                <option value="PESQUISADOR">Pesquisador</option>
+                <option value="BOLSISTA">Bolsista</option>
+                <option value="COORDENADOR">Coordenador</option>
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowAddMemberModal(false)}
+                className="fluxfin-btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddMember}
+                disabled={!newMemberId}
+                className="fluxfin-btn-primary disabled:opacity-50"
+              >
+                Adicionar
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {completingMilestone && (
+        <Modal
+          isOpen={!!completingMilestone}
+          onClose={() => setCompletingMilestone(null)}
+          title="Concluir Marco"
+        >
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted mb-3">Marco: <span className="font-medium text-foreground">{completingMilestone.nome}</span></p>
+              <label className="block text-sm font-medium text-foreground mb-1">Data de Execucao (opcional)</label>
+              <input
+                type="date"
+                value={completionDate}
+                onChange={(e) => setCompletionDate(e.target.value)}
+                className="fluxfin-input w-full"
+              />
+              <p className="text-xs text-muted mt-1">Se nao selecionar nenhuma data, sera usada a data de hoje.</p>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setCompletingMilestone(null)}
+                className="fluxfin-btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  handleToggleMilestone(completingMilestone, completionDate || undefined);
+                  setCompletingMilestone(null);
+                }}
+                className="fluxfin-btn-primary"
+              >
+                Concluir
               </button>
             </div>
           </div>
