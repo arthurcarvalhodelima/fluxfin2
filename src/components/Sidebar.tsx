@@ -28,7 +28,9 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => item.href !== "/usuarios" || session?.user?.papelSistema === "ADMIN")
+          .map((item) => {
           const isActive = pathname === item.href ||
             (pathname.startsWith(item.href + "/") &&
              !navItems.some(other =>

@@ -14,6 +14,10 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl)
   }
 
+  if (pathname.startsWith('/usuarios') && req.auth.user?.papelSistema !== 'ADMIN') {
+    return NextResponse.redirect(new URL('/dashboard', req.nextUrl.origin))
+  }
+
   return NextResponse.next()
 })
 
