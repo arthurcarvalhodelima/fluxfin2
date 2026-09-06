@@ -27,7 +27,7 @@ export default async function PortfolioPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Portfolio de Projetos - Gantt</h1>
+        <h1 className="text-2xl font-bold text-foreground">Portfólio de Projetos - Gantt</h1>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -40,7 +40,7 @@ export default async function PortfolioPage() {
           <p className="text-3xl font-bold text-primary-dark mt-1">{active}</p>
         </div>
         <div className="fluxfin-card text-center">
-          <p className="text-sm text-muted">Concluidos</p>
+          <p className="text-sm text-muted">Concluídos</p>
           <p className="text-3xl font-bold text-success mt-1">{completed}</p>
         </div>
       </div>

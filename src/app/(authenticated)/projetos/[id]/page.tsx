@@ -59,7 +59,7 @@ interface Projeto {
   }[];
 }
 
-const tabs = ["Resumo", "Equipe", "Orcamento", "Despesas", "Marcos", "Documentos", "Gantt", "PERT/CPM"];
+const tabs = ["Resumo", "Equipe", "Orçamento", "Despesas", "Marcos", "Documentos", "Gantt", "PERT/CPM"];
 
 const statusVariants: Record<string, "success" | "warning" | "danger" | "info" | "default"> = {
   ATIVO: "success",
@@ -70,7 +70,7 @@ const statusVariants: Record<string, "success" | "warning" | "danger" | "info" |
 
 const statusOptions = [
   { value: "ATIVO", label: "Ativo" },
-  { value: "CONCLUIDO", label: "Concluido" },
+  { value: "CONCLUIDO", label: "Concluído" },
   { value: "SUSPENSO", label: "Suspenso" },
   { value: "CANCELADO", label: "Cancelado" },
 ];
@@ -121,10 +121,10 @@ function StatusDropdown({ projeto, onStatusChange }: { projeto: { id: string; st
 
 const categoriaLabels: Record<string, string> = {
   RECURSOS_HUMANOS: "Recursos Humanos",
-  SERVICOS_TERCEIROS: "Servicos de Terceiros",
+  SERVICOS_TERCEIROS: "Serviços de Terceiros",
   MATERIAIS_CONSUMO: "Materiais de Consumo",
   MATERIAIS_PERMANENTES: "Materiais Permanentes",
-  VIAGENS_DIARIAS: "Viagens e Diarias",
+  VIAGENS_DIARIAS: "Viagens e Diárias",
   CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
 };
 
@@ -578,7 +578,7 @@ export default function ProjetoDetailPage() {
             <StatusDropdown projeto={projeto} onStatusChange={handleUpdateProjectStatus} />
           </div>
           <p className="text-muted">
-            Codigo: {projeto.codigo}
+            Código: {projeto.codigo}
           </p>
         </div>
       </div>
@@ -608,28 +608,28 @@ export default function ProjetoDetailPage() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="fluxfin-card space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Informacoes do Projeto</h2>
+            <h2 className="text-lg font-semibold text-foreground">Informações do Projeto</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-muted">Descricao</p>
-                <p className="text-foreground">{projeto.descricao || "Sem descricao"}</p>
+                <p className="text-sm text-muted">Descrição</p>
+                <p className="text-foreground">{projeto.descricao || "Sem descrição"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted">Data Inicio</p>
+                  <p className="text-sm text-muted">Data Início</p>
                   <p className="text-foreground">
                     {new Date(projeto.dataInicio).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted">Data Termino</p>
+                  <p className="text-sm text-muted">Data Término</p>
                   <p className="text-foreground">
                     {new Date(projeto.dataTermino).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
               </div>
               <div>
-                <p className="text-sm text-muted">Progresso Fisico</p>
+                <p className="text-sm text-muted">Progresso Físico</p>
                 <div className="flex items-center gap-3 mt-1">
                   <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                     <div
@@ -649,7 +649,7 @@ export default function ProjetoDetailPage() {
             <h2 className="text-lg font-semibold text-foreground">Resumo Financeiro</h2>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted">Orcamento Global</span>
+                <span className="text-muted">Orçamento Global</span>
                 <span className="font-semibold text-foreground">
                   {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
                     Number(projeto.orcamentoGlobal)
@@ -686,7 +686,7 @@ export default function ProjetoDetailPage() {
 
           {evmMetrics && (
             <div className="fluxfin-card space-y-4">
-              <h2 className="text-lg font-semibold text-foreground">Analise EVM (Earned Value Management)</h2>
+              <h2 className="text-lg font-semibold text-foreground">Análise EVM (Earned Value Management)</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {[
                   {
@@ -717,7 +717,7 @@ export default function ProjetoDetailPage() {
                     label: "VAC",
                     value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.vac),
                     color: evmMetrics.vac >= 0 ? "text-green-600" : "text-red-600",
-                    desc: "Variacao",
+                    desc: "Variação",
                   },
                 ].map((card) => (
                   <div key={card.label} className="p-4 rounded-lg bg-surface-hover">
@@ -802,10 +802,10 @@ export default function ProjetoDetailPage() {
         </div>
       )}
 
-      {activeTab === "Orcamento" && (
+      {activeTab === "Orçamento" && (
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground">Rubricas Orcamentarias</h2>
+            <h2 className="text-lg font-semibold text-foreground">Rubricas Orçamentárias</h2>
           </div>
           {projeto.rubricas.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhuma rubrica cadastrada</p>
@@ -819,7 +819,7 @@ export default function ProjetoDetailPage() {
                     <th className="px-4 py-3">Alocado</th>
                     <th className="px-4 py-3">Gasto</th>
                     <th className="px-4 py-3">Saldo</th>
-                    <th className="px-4 py-3">Execucao</th>
+                    <th className="px-4 py-3">Execução</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -891,7 +891,7 @@ export default function ProjetoDetailPage() {
               <table className="fluxfin-table">
                 <thead>
                   <tr>
-                    <th className="px-4 py-3">Descricao</th>
+                    <th className="px-4 py-3">Descrição</th>
                     <th className="px-4 py-3">Rubrica</th>
                     <th className="px-4 py-3">Valor</th>
                     <th className="px-4 py-3">Data</th>
@@ -1084,12 +1084,12 @@ export default function ProjetoDetailPage() {
                 </svg>
                 <p className="font-medium">Diagrama de Gantt</p>
                 <p className="text-sm mt-1">
-                  Visualizacao cronograma de atividades do projeto
+                  Visualização cronograma de atividades do projeto
                 </p>
                 <div className="mt-6 space-y-2">
                   <div className="flex items-center gap-4">
                     <span className="w-32 text-sm text-left text-muted">
-                      Inicio do projeto
+                      Início do projeto
                     </span>
                     <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">
                       <div
@@ -1139,14 +1139,14 @@ export default function ProjetoDetailPage() {
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-medium text-foreground">{m.nome}</p>
                         {m.dataExecucao && (
-                          <Badge variant="success">Concluido</Badge>
+                          <Badge variant="success">Concluído</Badge>
                         )}
                       </div>
                       {m.descricao && (
                         <p className="text-sm text-muted mb-2">{m.descricao}</p>
                       )}
                       <div className="flex items-center gap-4 text-sm text-muted">
-                        <span>Previsao: {new Date(m.dataPrevista).toLocaleDateString("pt-BR")}</span>
+                          <span>Previsão: {new Date(m.dataPrevista).toLocaleDateString("pt-BR")}</span>
                         {m.dataExecucao && (
                           <span>Executado: {new Date(m.dataExecucao).toLocaleDateString("pt-BR")}</span>
                         )}
@@ -1225,7 +1225,7 @@ export default function ProjetoDetailPage() {
 
       {activeTab === "PERT/CPM" && (
         <div className="fluxfin-card">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Analise PERT/CPM</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Análise PERT/CPM</h2>
           {pertCpmLoading ? (
             <div className="flex items-center justify-center py-12">
               <LoadingSpinner size="lg" />
@@ -1240,14 +1240,14 @@ export default function ProjetoDetailPage() {
                   <p className="text-2xl font-bold text-foreground">{pertCpm.duracaoTotal} dias</p>
                 </div>
                 <div className="p-4 rounded-lg bg-surface-hover">
-                  <p className="text-sm text-muted">Atividades no Caminho Critico</p>
+                  <p className="text-sm text-muted">Atividades no Caminho Crítico</p>
                   <p className="text-2xl font-bold text-danger">{pertCpm.caminhoCritico.length}</p>
                 </div>
               </div>
 
               {pertCpm.caminhoCritico.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Caminho Critico</h3>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Caminho Crítico</h3>
                   <div className="flex flex-wrap gap-2">
                     {pertCpm.caminhoCritico.map((id) => {
                       const atividade = pertCpm.atividades.find(a => a.id === id);
@@ -1292,7 +1292,7 @@ export default function ProjetoDetailPage() {
                             </td>
                             <td className="px-4 py-3">
                               <Badge variant={isCritico ? "danger" : "success"}>
-                                {isCritico ? "Critico" : "Normal"}
+                                {isCritico ? "Crítico" : "Normal"}
                               </Badge>
                             </td>
                           </tr>
@@ -1325,7 +1325,7 @@ export default function ProjetoDetailPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="fluxfin-label">Descricao (opcional)</label>
+              <label className="fluxfin-label">Descrição (opcional)</label>
               <textarea
                 className="fluxfin-input"
                 rows={2}
@@ -1404,7 +1404,7 @@ export default function ProjetoDetailPage() {
         <Modal
           isOpen={showAddMemberModal}
           onClose={() => setShowAddMemberModal(false)}
-          title="Adicionar Membro a Equipe"
+          title="Adicionar Membro à Equipe"
         >
           <div className="space-y-4">
             <div>
@@ -1465,7 +1465,7 @@ export default function ProjetoDetailPage() {
           <div className="space-y-4">
             <div>
               <p className="text-sm text-muted mb-3">Marco: <span className="font-medium text-foreground">{completingMilestone.nome}</span></p>
-              <label className="block text-sm font-medium text-foreground mb-1">Data de Execucao (opcional)</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Data de Execução (opcional)</label>
               <input
                 type="date"
                 value={completionDate}

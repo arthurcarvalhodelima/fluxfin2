@@ -25,7 +25,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Email ou senha invalidos");
+        setError("Email ou senha inválidos");
       } else {
         router.push("/dashboard");
       }
@@ -44,7 +44,7 @@ export default function LoginPage() {
             F
           </div>
           <h1 className="text-3xl font-bold text-foreground">FluxFin</h1>
-          <p className="text-muted mt-2">Controle Orcamentario</p>
+          <p className="text-muted mt-2">Controle Orçamentário</p>
         </div>
 
         <div className="fluxfin-card">

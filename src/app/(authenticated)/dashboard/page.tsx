@@ -83,7 +83,7 @@ export default function DashboardPage() {
       icon: "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10",
     },
     {
-      label: "Orcamento Global",
+      label: "Orçamento Global",
       value: formatCurrency(data.totalOrcamento),
       icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
     },
@@ -212,7 +212,7 @@ export default function DashboardPage() {
 
         <div className="fluxfin-card">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            Burndown Orcamentario
+            Burndown Orçamentário
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={data.burndown}>
@@ -283,7 +283,7 @@ export default function DashboardPage() {
               CPI = Earned Value / Custo Real
             </p>
             <p className="text-sm">
-              <span className="font-medium text-foreground">Saldo disponivel: </span>
+              <span className="font-medium text-foreground">Saldo disponível: </span>
               <span className="text-primary-dark font-semibold">{formatCurrency(data.saldoDisponivel)}</span>
             </p>
             <p className="text-sm">
@@ -298,7 +298,7 @@ export default function DashboardPage() {
                     : "bg-red-100 text-red-700"
                 }`}
               >
-                {data.cpi >= 1 ? "Dentro do orcamento" : "Acima do orcamento"}
+                {data.cpi >= 1 ? "Dentro do orçamento" : "Acima do orçamento"}
               </span>
             </div>
           </div>

@@ -28,7 +28,7 @@ export async function GET(
 
   if (!projeto) {
     return NextResponse.json(
-      { error: "Projeto nao encontrado" },
+      { error: "Projeto não encontrado" },
       { status: 404 }
     );
   }

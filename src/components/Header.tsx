@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 const routeLabels: Record<string, string> = {
   dashboard: "Dashboard",
   projetos: "Projetos",
-  usuarios: "Usuarios",
-  relatorios: "Relatorios",
+  usuarios: "Usuários",
+  relatorios: "Relatórios",
 };
 
 export default function Header() {
@@ -25,7 +25,7 @@ export default function Header() {
     <header className="h-16 bg-white border-b border-border flex items-center justify-between px-6 sticky top-0 z-30">
       <div className="flex items-center gap-2 text-sm">
         <nav className="flex items-center gap-1.5">
-          <span className="text-muted">Inicio</span>
+          <span className="text-muted">Início</span>
           {breadcrumbs.map((crumb) => (
             <span key={crumb.href} className="flex items-center gap-1.5">
               <svg
@@ -63,7 +63,7 @@ export default function Header() {
             </div>
             <div className="text-left hidden sm:block">
               <p className="text-sm font-medium text-foreground">
-                {session?.user?.nome || "Usuario"}
+                {session?.user?.nome || "Usuário"}
               </p>
               <p className="text-xs text-muted">
                 {session?.user?.papelSistema || "user"}

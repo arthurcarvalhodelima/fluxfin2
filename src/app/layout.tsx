@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FluxFin - Controle Orcamentario",
-  description: "Sistema de controle orcamentario e financeiro",
+  title: "FluxFin - Controle Orçamentário",
+  description: "Sistema de controle orçamentário e financeiro",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -25,7 +25,7 @@ const statusColors: Record<string, { bar: string; label: string; bg: string }> =
 
 const statusLabels: Record<string, string> = {
   ATIVO: "Ativo",
-  CONCLUIDO: "Concluido",
+  CONCLUIDO: "Concluído",
   SUSPENSO: "Suspenso",
   CANCELADO: "Cancelado",
 };

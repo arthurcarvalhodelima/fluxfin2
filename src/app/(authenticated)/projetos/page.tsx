@@ -26,7 +26,7 @@ const statusVariants: Record<string, "success" | "warning" | "danger" | "info" |
 
 const statusOptions = [
   { value: "ATIVO", label: "Ativo" },
-  { value: "CONCLUIDO", label: "Concluido" },
+  { value: "CONCLUIDO", label: "Concluído" },
   { value: "SUSPENSO", label: "Suspenso" },
   { value: "CANCELADO", label: "Cancelado" },
 ];
@@ -115,8 +115,8 @@ export default function ProjetosPage() {
   }
 
   const columns: Column<Projeto>[] = [
-    { key: "codigo", header: "Codigo", sortable: true },
-    { key: "titulo", header: "Titulo", sortable: true },
+    { key: "codigo", header: "Código", sortable: true },
+    { key: "titulo", header: "Título", sortable: true },
     {
       key: "status",
       header: "Status",
@@ -126,7 +126,7 @@ export default function ProjetosPage() {
     },
     {
       key: "orcamentoGlobal",
-      header: "Orcamento",
+      header: "Orçamento",
       sortable: true,
       render: (item) =>
         new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -135,7 +135,7 @@ export default function ProjetosPage() {
     },
     {
       key: "dataInicio",
-      header: "Data Inicio",
+      header: "Data Início",
       render: (item) =>
         item.dataInicio
           ? new Date(item.dataInicio).toLocaleDateString("pt-BR")
@@ -143,7 +143,7 @@ export default function ProjetosPage() {
     },
     {
       key: "dataTermino",
-      header: "Data Termino",
+      header: "Data Término",
       render: (item) =>
         item.dataTermino
           ? new Date(item.dataTermino).toLocaleDateString("pt-BR")
@@ -202,7 +202,7 @@ export default function ProjetosPage() {
         >
           <option value="">Todos os status</option>
           <option value="ATIVO">Ativo</option>
-          <option value="CONCLUIDO">Concluido</option>
+          <option value="CONCLUIDO">Concluído</option>
           <option value="SUSPENSO">Suspenso</option>
           <option value="CANCELADO">Cancelado</option>
         </select>
@@ -211,7 +211,7 @@ export default function ProjetosPage() {
       <DataTable
         data={projetos}
         columns={columns}
-        searchPlaceholder="Buscar por codigo ou titulo..."
+        searchPlaceholder="Buscar por código ou título..."
         onRowClick={(item) => router.push(`/projetos/${item.id}`)}
       />
     </div>

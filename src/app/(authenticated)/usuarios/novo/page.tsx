@@ -55,12 +55,12 @@ export default function NovoUsuarioPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || "Erro ao criar usuario");
+        throw new Error(data.error || "Erro ao criar usuário");
       }
 
       router.push("/usuarios");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao criar usuario");
+      setError(err instanceof Error ? err.message : "Erro ao criar usuário");
     } finally {
       setLoading(false);
     }
@@ -69,7 +69,7 @@ export default function NovoUsuarioPage() {
   return (
     <div className="max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Novo Usuario</h1>
+        <h1 className="text-2xl font-bold text-foreground">Novo Usuário</h1>
         <button onClick={() => router.back()} className="fluxfin-btn-ghost">
           Voltar
         </button>
@@ -110,7 +110,7 @@ export default function NovoUsuarioPage() {
             value={papelSistema}
             onChange={(e) => setPapelSistema(e.target.value)}
           >
-            <option value="USUARIO">Usuario</option>
+            <option value="USUARIO">Usuário</option>
             <option value="ADMIN">Administrador</option>
           </select>
         </div>
@@ -140,7 +140,7 @@ export default function NovoUsuarioPage() {
                 Criando...
               </span>
             ) : (
-              "Criar Usuario"
+              "Criar Usuário"
             )}
           </button>
         </div>

@@ -7,10 +7,10 @@ import FormField from "@/components/FormField";
 
 const CATEGORIAS = [
   { value: "RECURSOS_HUMANOS", label: "Recursos Humanos" },
-  { value: "SERVICOS_TERCEIROS", label: "Servicos de Terceiros" },
+  { value: "SERVICOS_TERCEIROS", label: "Serviços de Terceiros" },
   { value: "MATERIAIS_CONSUMO", label: "Materiais de Consumo" },
   { value: "MATERIAIS_PERMANENTES", label: "Materiais Permanentes" },
-  { value: "VIAGENS_DIARIAS", label: "Viagens e Diarias" },
+  { value: "VIAGENS_DIARIAS", label: "Viagens e Diárias" },
   { value: "CUSTOS_ADMINISTRATIVOS", label: "Custos Administrativos" },
 ];
 
@@ -124,18 +124,18 @@ export default function NovoProjetoPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="fluxfin-card space-y-5">
-          <h2 className="text-lg font-semibold text-foreground">Informacoes Basicas</h2>
+          <h2 className="text-lg font-semibold text-foreground">Informações Básicas</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              label="Codigo"
+              label="Código"
               placeholder="Ex: PROJ-001"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
               required
             />
             <FormField
-              label="Orcamento Global (R$)"
+              label="Orçamento Global (R$)"
               type="number"
               placeholder="0.00"
               step="0.01"
@@ -147,18 +147,18 @@ export default function NovoProjetoPage() {
           </div>
 
           <FormField
-            label="Titulo"
-            placeholder="Titulo do projeto"
+            label="Título"
+            placeholder="Título do projeto"
             value={titulo}
             onChange={(e) => setTitulo(e.target.value)}
             required
           />
 
           <div className="space-y-1.5">
-            <label className="fluxfin-label">Descricao</label>
+            <label className="fluxfin-label">Descrição</label>
             <textarea
               className="fluxfin-input min-h-[100px] resize-y"
-              placeholder="Descricao do projeto (opcional)"
+              placeholder="Descrição do projeto (opcional)"
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
             />
@@ -166,14 +166,14 @@ export default function NovoProjetoPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
-              label="Data Inicio"
+              label="Data Início"
               type="date"
               value={dataInicio}
               onChange={(e) => setDataInicio(e.target.value)}
               required
             />
             <FormField
-              label="Data Termino"
+              label="Data Término"
               type="date"
               value={dataTermino}
               onChange={(e) => setDataTermino(e.target.value)}
@@ -184,7 +184,7 @@ export default function NovoProjetoPage() {
 
         <div className="fluxfin-card space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">Rubricas Orcamentarias</h2>
+            <h2 className="text-lg font-semibold text-foreground">Rubricas Orçamentárias</h2>
             <button
               type="button"
               onClick={addRubrica}

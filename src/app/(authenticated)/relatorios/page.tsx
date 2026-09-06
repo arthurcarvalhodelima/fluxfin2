@@ -42,11 +42,11 @@ interface RelatorioData {
 }
 
 const REPORT_TYPES = [
-  { value: "RESUMO", label: "Resumo", description: "Visao geral do projeto" },
-  { value: "ORCAMENTO", label: "Orcamento", description: "Detalhes orcamentarios e rubricas" },
-  { value: "DESPESAS", label: "Despesas", description: "Historico de despesas" },
-  { value: "EQUIPE", label: "Equipe", description: "Membros e papeis" },
-  { value: "COMPLETO", label: "Completo", description: "Relatorio completo do projeto" },
+  { value: "RESUMO", label: "Resumo", description: "Visão geral do projeto" },
+  { value: "ORCAMENTO", label: "Orçamento", description: "Detalhes orçamentários e rubricas" },
+  { value: "DESPESAS", label: "Despesas", description: "Histórico de despesas" },
+  { value: "EQUIPE", label: "Equipe", description: "Membros e papéis" },
+  { value: "COMPLETO", label: "Completo", description: "Relatório completo do projeto" },
 ] as const;
 
 export default function RelatoriosPage() {
@@ -109,7 +109,7 @@ export default function RelatoriosPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Erro ao gerar relatorio");
+        throw new Error(err.error || "Erro ao gerar relatório");
       }
 
       const data = await res.json();
@@ -117,7 +117,7 @@ export default function RelatoriosPage() {
       setShowPreview(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Erro ao gerar relatorio"
+        err instanceof Error ? err.message : "Erro ao gerar relatório"
       );
     } finally {
       setLoading(false);
@@ -135,9 +135,9 @@ export default function RelatoriosPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Relatorios</h1>
+        <h1 className="text-2xl font-bold text-foreground">Relatórios</h1>
         <p className="text-muted mt-1">
-          Gere relatorios detalhados dos seus projetos
+          Gere relatórios detalhados dos seus projetos
         </p>
       </div>
 
@@ -160,7 +160,7 @@ export default function RelatoriosPage() {
           </div>
 
           <div>
-            <label className="fluxfin-label">Tipo de Relatorio</label>
+            <label className="fluxfin-label">Tipo de Relatório</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {REPORT_TYPES.map((tipo) => (
                 <button
@@ -201,7 +201,7 @@ export default function RelatoriosPage() {
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <LoadingSpinner size="sm" />
-                Gerando relatorio...
+                Gerando relatório...
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
@@ -218,7 +218,7 @@ export default function RelatoriosPage() {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                Gerar Relatorio
+                Gerar Relatório
               </span>
             )}
           </button>

@@ -53,7 +53,7 @@ function generatePDF(data: RelatorioData): jsPDF {
 
   doc.setFontSize(18);
   doc.setTextColor(137, 190, 48);
-  doc.text("FluxFin - Relatorio do Projeto", pageWidth / 2, y, {
+  doc.text("FluxFin - Relatório do Projeto", pageWidth / 2, y, {
     align: "center",
   });
   y += 12;
@@ -77,14 +77,14 @@ function generatePDF(data: RelatorioData): jsPDF {
   doc.text("Dados do Projeto", 20, y);
   y += 7;
   doc.setFontSize(10);
-  doc.text(`Codigo: ${data.projeto.codigo}`, 20, y);
+  doc.text(`Código: ${data.projeto.codigo}`, 20, y);
   y += 6;
-  doc.text(`Titulo: ${data.projeto.titulo}`, 20, y);
+  doc.text(`Título: ${data.projeto.titulo}`, 20, y);
   y += 6;
   doc.text(`Status: ${data.projeto.status}`, 20, y);
   y += 6;
   doc.text(
-    `Periodo: ${new Date(data.projeto.dataInicio).toLocaleDateString("pt-BR")} a ${new Date(data.projeto.dataTermino).toLocaleDateString("pt-BR")}`,
+    `Período: ${new Date(data.projeto.dataInicio).toLocaleDateString("pt-BR")} a ${new Date(data.projeto.dataTermino).toLocaleDateString("pt-BR")}`,
     20,
     y
   );
@@ -97,7 +97,7 @@ function generatePDF(data: RelatorioData): jsPDF {
   y += 7;
   doc.setFontSize(10);
   doc.text(
-    `Orcamento Total: ${formatCurrency(data.resumoFinanceiro.orcamentoTotal)}`,
+    `Orçamento Total: ${formatCurrency(data.resumoFinanceiro.orcamentoTotal)}`,
     20,
     y
   );
@@ -187,7 +187,7 @@ export default function RelatorioPreview({
   const handleDownload = () => {
     const doc = generatePDF(data);
     doc.save(
-      `relatorio-${data.projeto.codigo}-${new Date().toISOString().slice(0, 10)}.pdf`
+      `relatório-${data.projeto.codigo}-${new Date().toISOString().slice(0, 10)}.pdf`
     );
   };
 
@@ -195,7 +195,7 @@ export default function RelatorioPreview({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Preview do Relatorio"
+      title="Pré-visualização do Relatório"
       size="xl"
       footer={
         <>
@@ -241,7 +241,7 @@ export default function RelatorioPreview({
 
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <p className="text-muted text-xs">Orcamento Total</p>
+              <p className="text-muted text-xs">Orçamento Total</p>
               <p className="font-semibold text-foreground">
                 {formatCurrency(data.resumoFinanceiro.orcamentoTotal)}
               </p>

@@ -46,7 +46,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           FluxFin
         </h1>
         <p className="text-white/60 text-sm mb-8">
-          Controle Orcamentario
+          Controle Orçamentário
         </p>
 
         <div className="flex justify-center">

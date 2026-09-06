@@ -16,10 +16,10 @@ interface Milestone {
 
 const categoriaLabels: Record<string, string> = {
   RECURSOS_HUMANOS: "Recursos Humanos",
-  SERVICOS_TERCEIROS: "Servicos de Terceiros",
+  SERVICOS_TERCEIROS: "Serviços de Terceiros",
   MATERIAIS_CONSUMO: "Materiais de Consumo",
   MATERIAIS_PERMANENTES: "Materiais Permanentes",
-  VIAGENS_DIARIAS: "Viagens e Diarias",
+  VIAGENS_DIARIAS: "Viagens e Diárias",
   CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
 };
 
@@ -106,7 +106,7 @@ export default function ExpenseForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <label className="fluxfin-label">Descricao</label>
+        <label className="fluxfin-label">Descrição</label>
         <input
           type="text"
           className="fluxfin-input"
@@ -134,7 +134,7 @@ export default function ExpenseForm({
 
         {saldo !== null && (
           <p className={`text-sm mt-1 ${saldo >= 0 ? "text-primary-dark" : "text-danger"}`}>
-            Saldo disponivel:{" "}
+            Saldo disponível:{" "}
             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(saldo)}
           </p>
         )}
@@ -149,7 +149,7 @@ export default function ExpenseForm({
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
               />
             </svg>
-            Valor excede o saldo disponivel nesta rubrica
+            Valor excede o saldo disponível nesta rubrica
           </div>
         )}
       </div>

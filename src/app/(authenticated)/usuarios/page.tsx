@@ -131,13 +131,13 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Usuarios</h1>
+        <h1 className="text-2xl font-bold text-foreground">Usuários</h1>
         {isAdmin && (
           <button
             onClick={() => router.push("/usuarios/novo")}
             className="fluxfin-btn-primary"
           >
-            Novo Usuario
+            Novo Usuário
           </button>
         )}
       </div>
@@ -194,16 +194,16 @@ export default function UsuariosPage() {
         title={
           isToggle
             ? toggleUser?.ativo
-              ? "Desativar Usuario"
-              : "Ativar Usuario"
-            : "Excluir Usuario"
+              ? "Desativar Usuário"
+              : "Ativar Usuário"
+            : "Excluir Usuário"
         }
         message={
           isToggle
             ? `Tem certeza que deseja ${
                 toggleUser?.ativo ? "desativar" : "ativar"
-              } o usuario "${toggleUser?.nome}"?`
-            : `Tem certeza que deseja excluir permanentemente o usuario "${deleteConfirm?.nome}"? Esta ação não pode ser desfeita.`
+              } o usuário "${toggleUser?.nome}"?`
+            : `Tem certeza que deseja excluir permanentemente o usuário "${deleteConfirm?.nome}"? Esta ação não pode ser desfeita.`
         }
         confirmLabel={
           isToggle
