@@ -3,15 +3,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createAuditLog } from '@/lib/audit'
 import { checkProjectAccess } from '@/lib/permissions'
-import { z } from 'zod'
 
 const ALLOWED_EXTENSIONS = ['pdf', 'xlsx', 'xls', 'doc', 'docx']
-
-const createDocumentSchema = z.object({
-  nomeArquivo: z.string().min(1, 'Nome do arquivo é obrigatório'),
-  extensao: z.string().min(1, 'Extensão é obrigatória'),
-  urlArmazenamento: z.string().url('URL inválida'),
-})
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 export async function GET(
   _request: NextRequest,
@@ -24,9 +18,9 @@ export async function GET(
 
   const { id } = await params
 
-  const projeto = await prisma.projeto.findUnique({ where: { id } })
-  if (!projeto) {
-    return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
+  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
   const documentos = await prisma.documentoProjeto.findMany({
@@ -50,12 +44,6 @@ export async function POST(
   }
 
   const { id } = await params
-  const body = await request.json()
-  const parsed = createDocumentSchema.safeParse(body)
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
-  }
 
   const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
   if (!hasAccess) {
@@ -67,31 +55,62 @@ export async function POST(
     return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
   }
 
-  const ext = parsed.data.extensao.toLowerCase().replace('.', '')
+  let formData: FormData
+  try {
+    formData = await request.formData()
+  } catch {
+    return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+  }
+
+  const file = formData.get('file') as File | null
+
+  if (!file || file.size === 0) {
+    return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    return NextResponse.json({ error: 'Arquivo muito grande. Máximo: 10MB' }, { status: 400 })
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
     return NextResponse.json({
       error: `Extensão não permitida. Permitidas: ${ALLOWED_EXTENSIONS.join(', ')}`,
     }, { status: 400 })
   }
 
-  const documento = await prisma.documentoProjeto.create({
-    data: {
+  try {
+    const bytes = await file.arrayBuffer()
+    const base64 = Buffer.from(bytes).toString('base64')
+
+    const documento = await prisma.documentoProjeto.create({
+      data: {
+        projetoId: id,
+        usuarioId: session.user.id,
+        nomeArquivo: file.name,
+        extensao: ext,
+        urlArmazenamento: `data:${file.type};base64,${base64}`,
+      },
+    })
+
+    await createAuditLog({
+      userId: session.user.id,
       projetoId: id,
-      usuarioId: session.user.id,
-      nomeArquivo: parsed.data.nomeArquivo,
-      extensao: ext,
-      urlArmazenamento: parsed.data.urlArmazenamento,
-    },
-  })
+      entity: 'DocumentoProjeto',
+      entityId: documento.id,
+      action: 'CRIAR',
+      newData: { nomeArquivo: file.name, extensao: ext },
+    })
 
-  await createAuditLog({
-    userId: session.user.id,
-    projetoId: id,
-    entity: 'DocumentoProjeto',
-    entityId: documento.id,
-    action: 'CRIAR',
-    newData: { nomeArquivo: parsed.data.nomeArquivo, extensao: ext },
-  })
-
-  return NextResponse.json(documento, { status: 201 })
+    return NextResponse.json({
+      id: documento.id,
+      nomeArquivo: documento.nomeArquivo,
+      extensao: documento.extensao,
+      dataUpload: documento.dataUpload,
+      urlArmazenamento: documento.urlArmazenamento,
+      usuario: { id: session.user.id, nome: session.user.nome },
+    }, { status: 201 })
+  } catch (err) {
+    return NextResponse.json({ error: `Erro ao salvar arquivo: ${(err as Error).message}` }, { status: 500 })
+  }
 }

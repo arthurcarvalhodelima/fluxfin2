@@ -44,6 +44,7 @@ interface Projeto {
     nomeArquivo: string;
     extensao: string;
     dataUpload: string;
+    urlArmazenamento: string;
     usuario: { nome: string };
   }[];
   milestones: {
@@ -157,6 +158,7 @@ export default function ProjetoDetailPage() {
   const [newMemberPapel, setNewMemberPapel] = useState<"COORDENADOR" | "PESQUISADOR" | "BOLSISTA">("PESQUISADOR");
   const [completingMilestone, setCompletingMilestone] = useState<NonNullable<Projeto["milestones"]>[0] | null>(null);
   const [completionDate, setCompletionDate] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
@@ -443,6 +445,73 @@ export default function ProjetoDetailPage() {
         setAvailableUsers(users.filter((u: { id: string; ativo: boolean }) => u.ativo && !membroIds.includes(u.id)));
       })
       .catch(() => {});
+  }
+
+  async function handleUploadDocument(file: File) {
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const allowed = ['pdf', 'xlsx', 'xls', 'doc', 'docx'];
+    if (!allowed.includes(ext)) {
+      alert(`Extensão não permitida. Permitidas: ${allowed.join(', ')}`);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Arquivo muito grande. Máximo: 10MB');
+      return;
+    }
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(`/api/projetos/${id}/documentos`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Erro ao enviar arquivo');
+        return;
+      }
+      const newDoc = await res.json();
+      setProjeto((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          documentosProjeto: [newDoc, ...prev.documentosProjeto],
+        };
+      });
+    } catch (err) {
+      alert('Erro ao enviar arquivo. Tente novamente.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDeleteDocument(docId: string) {
+    if (!confirm('Tem certeza que deseja excluir este documento?')) return;
+    setProjeto((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        documentosProjeto: prev.documentosProjeto.filter((d) => d.id !== docId),
+      };
+    });
+    try {
+      await fetch(`/api/projetos/${id}/documentos/${docId}`, { method: 'DELETE' });
+    } catch {
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    }
+  }
+
+  function handleDownloadDocument(doc: NonNullable<Projeto["documentosProjeto"]>[0]) {
+    if (!doc.urlArmazenamento) return;
+    const link = document.createElement('a');
+    link.href = doc.urlArmazenamento;
+    link.download = doc.nomeArquivo;
+    link.click();
   }
 
   const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
@@ -925,6 +994,19 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Documentos</h2>
+            <label className={`fluxfin-btn-primary cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              {uploading ? 'Enviando...' : 'Enviar Documento'}
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.xlsx,.xls,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleUploadDocument(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
           </div>
           {projeto.documentosProjeto.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum documento anexado</p>
@@ -959,7 +1041,21 @@ export default function ProjetoDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="default">{doc.extensao.toUpperCase()}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default">{doc.extensao.toUpperCase()}</Badge>
+                    <button
+                      onClick={() => handleDownloadDocument(doc)}
+                      className="text-xs px-2 py-1 rounded bg-primary/10 text-primary-dark hover:bg-primary/20 transition-colors"
+                    >
+                      Baixar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDocument(doc.id)}
+                      className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

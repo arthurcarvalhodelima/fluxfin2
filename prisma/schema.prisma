@@ -136,7 +136,7 @@ model DocumentoProjeto {
   usuarioId       String   @db.Uuid
   nomeArquivo     String
   extensao        String
-  urlArmazenamento String
+  urlArmazenamento String   @db.Text
   dataUpload      DateTime @default(now())
 
   projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
