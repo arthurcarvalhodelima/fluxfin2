@@ -10,6 +10,13 @@ import Modal from "@/components/Modal";
 import ExpenseForm from "@/components/ExpenseForm";
 import { calculateCPI, calculateSPI, calculateEAC, calculateETC, calculateVAC } from "@/lib/evm";
 
+function formatDate(date: string | null | undefined): string {
+  if (!date) return "-";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "-";
+  return d.toLocaleDateString("pt-BR");
+}
+
 interface Projeto {
   id: string;
   codigo: string;
@@ -32,7 +39,7 @@ interface Projeto {
     valorAlocado: number;
     valorGasto: number;
   }[];
-  despesas: {
+  despesas?: {
     id: string;
     descricao: string;
     valor: number;
@@ -41,7 +48,7 @@ interface Projeto {
     rubrica: { id: string; nome: string; categoria: string };
     usuario: { nome: string };
   }[];
-  documentosProjeto: {
+  documentosProjeto?: {
     id: string;
     nomeArquivo: string;
     extensao: string;
@@ -49,7 +56,7 @@ interface Projeto {
     urlArmazenamento: string;
     usuario: { nome: string };
   }[];
-  milestones: {
+  milestones?: {
     id: string;
     nome: string;
     descricao: string | null;
@@ -163,12 +170,23 @@ export default function ProjetoDetailPage() {
   const [completingMilestone, setCompletingMilestone] = useState<NonNullable<Projeto["milestones"]>[0] | null>(null);
   const [completionDate, setCompletionDate] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [loadedTabs, setLoadedTabs] = useState<Set<string>>(new Set());
+  const [tabLoading, setTabLoading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/projetos/${id}`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
       .then((json) => {
-        setProjeto(json);
+        if (json && !json.error) {
+          setProjeto({
+            ...json,
+            dataInicio: typeof json.dataInicio === 'string' ? json.dataInicio : new Date(json.dataInicio).toISOString(),
+            dataTermino: typeof json.dataTermino === 'string' ? json.dataTermino : new Date(json.dataTermino).toISOString(),
+          });
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -184,6 +202,27 @@ export default function ProjetoDetailPage() {
         setPertCpmLoading(false);
       })
       .catch(() => setPertCpmLoading(false));
+  }
+
+  function loadTabData(tab: string) {
+    if (loadedTabs.has(tab) || tabLoading) return;
+    if (tab === "Resumo" || tab === "Equipe" || tab === "Orçamento") return;
+    setTabLoading(true);
+    const endpoint =
+      tab === "Despesas" ? "despesas" :
+      tab === "Documentos" ? "documentos" :
+      tab === "Marcos" ? "milestones" : null;
+    if (!endpoint) { setTabLoading(false); return; }
+    fetch(`/api/projetos/${id}/${endpoint}`)
+      .then((res) => res.json())
+      .then((json) => {
+        setProjeto((prev) => prev ? { ...prev,
+          [endpoint === "despesas" ? "despesas" : endpoint === "documentos" ? "documentosProjeto" : "milestones"]: json
+        } : prev);
+        setLoadedTabs((prev) => new Set(prev).add(tab));
+        setTabLoading(false);
+      })
+      .catch(() => setTabLoading(false));
   }
 
   function openMilestoneModal(milestone?: NonNullable<Projeto["milestones"]>[0]) {
@@ -209,7 +248,7 @@ export default function ProjetoDetailPage() {
     if (milestoneForm.predecessorIds.length > 0 && projeto) {
       const newDate = new Date(milestoneForm.dataPrevista + "T12:00:00");
       const invalid = milestoneForm.predecessorIds
-        .map((pid) => projeto.milestones.find((m) => m.id === pid))
+        .map((pid) => (projeto.milestones ?? []).find((m) => m.id === pid))
         .find((m) => m && new Date(m.dataPrevista) >= newDate);
       if (invalid) {
         alert(`A data prevista deve ser posterior ao predecessor "${invalid!.nome}"`);
@@ -233,7 +272,7 @@ export default function ProjetoDetailPage() {
       dataExecucao: null,
       percentualPrevisto: milestoneForm.percentualPrevisto,
       _count: { despesas: 0 },
-      predecessorDe: projeto?.milestones
+      predecessorDe: (projeto?.milestones ?? [])
         .filter((m) => milestoneForm.predecessorIds.includes(m.id))
         .map((m) => ({ id: m.id, nome: m.nome })) ?? [],
     };
@@ -243,14 +282,14 @@ export default function ProjetoDetailPage() {
       if (editingMilestone) {
         return {
           ...prev,
-          milestones: prev.milestones.map((m) =>
+          milestones: (prev.milestones ?? []).map((m) =>
             m.id === editingMilestone ? optimisticMilestone : m
           ),
         };
       }
       return {
         ...prev,
-        milestones: [...prev.milestones, optimisticMilestone],
+        milestones: [...(prev.milestones ?? []), optimisticMilestone],
       };
     });
     setShowMilestoneModal(false);
@@ -288,7 +327,7 @@ export default function ProjetoDetailPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        milestones: prev.milestones.filter((m) => m.id !== milestoneId),
+        milestones: (prev.milestones ?? []).filter((m) => m.id !== milestoneId),
       };
     });
     try {
@@ -307,7 +346,7 @@ export default function ProjetoDetailPage() {
 
     if (!wasCompleted && milestone.predecessorDe.length > 0) {
       const incomplete = milestone.predecessorDe.filter((p) => {
-        const m = projeto?.milestones.find((ms) => ms.id === p.id);
+        const m = (projeto?.milestones ?? []).find((ms) => ms.id === p.id);
         return m && !m.dataExecucao;
       });
       if (incomplete.length > 0) {
@@ -321,7 +360,7 @@ export default function ProjetoDetailPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        milestones: prev.milestones.map((m) =>
+        milestones: (prev.milestones ?? []).map((m) =>
           m.id === milestone.id
             ? { ...m, dataExecucao: newDate }
             : m
@@ -344,7 +383,7 @@ export default function ProjetoDetailPage() {
   async function handleUpdateExpenseStatus(despesaId: string, newStatus: string) {
     setProjeto((prev) => {
       if (!prev) return prev;
-      const despesa = prev.despesas.find((d) => d.id === despesaId);
+      const despesa = (prev.despesas ?? []).find((d) => d.id === despesaId);
       if (!despesa) return prev;
 
       const counted = ["APROVADA", "PAGA"];
@@ -355,7 +394,7 @@ export default function ProjetoDetailPage() {
 
       return {
         ...prev,
-        despesas: prev.despesas.map((d) =>
+        despesas: (prev.despesas ?? []).map((d) =>
           d.id === despesaId ? { ...d, status: newStatus } : d
         ),
         rubricas: prev.rubricas.map((r) => {
@@ -482,7 +521,7 @@ export default function ProjetoDetailPage() {
         if (!prev) return prev;
         return {
           ...prev,
-          documentosProjeto: [newDoc, ...prev.documentosProjeto],
+          documentosProjeto: [newDoc, ...(prev.documentosProjeto ?? [])],
         };
       });
     } catch (err) {
@@ -498,7 +537,7 @@ export default function ProjetoDetailPage() {
       if (!prev) return prev;
       return {
         ...prev,
-        documentosProjeto: prev.documentosProjeto.filter((d) => d.id !== docId),
+        documentosProjeto: (prev.documentosProjeto ?? []).filter((d) => d.id !== docId),
       };
     });
     try {
@@ -518,7 +557,7 @@ export default function ProjetoDetailPage() {
     link.click();
   }
 
-  const totalGasto = projeto?.rubricas.reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
+  const totalGasto = (projeto?.rubricas ?? []).reduce((sum, r) => sum + Number(r.valorGasto), 0) ?? 0;
 
   const evmMetrics = useMemo(() => {
     if (!projeto) return null;
@@ -570,8 +609,8 @@ export default function ProjetoDetailPage() {
     }
   }
 
-  const totalRubricas = projeto.rubricas.reduce((sum, r) => sum + Number(r.valorAlocado), 0);
-  const saldo = Number(projeto.orcamentoGlobal) - totalGasto;
+  const totalRubricas = (projeto?.rubricas ?? []).reduce((sum, r) => sum + Number(r.valorAlocado), 0);
+  const saldo = Number(projeto?.orcamentoGlobal ?? 0) - totalGasto;
 
   return (
     <div className="space-y-6">
@@ -595,6 +634,7 @@ export default function ProjetoDetailPage() {
               onClick={() => {
                 setActiveTab(tab);
                 if (tab === "PERT/CPM") fetchPertCpm();
+                loadTabData(tab);
               }}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab
@@ -622,13 +662,13 @@ export default function ProjetoDetailPage() {
                 <div>
                   <p className="text-sm text-muted">Data Início</p>
                   <p className="text-foreground">
-                    {new Date(projeto.dataInicio).toLocaleDateString("pt-BR")}
+                    {formatDate(projeto.dataInicio)}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted">Data Término</p>
                   <p className="text-foreground">
-                    {new Date(projeto.dataTermino).toLocaleDateString("pt-BR")}
+                    {formatDate(projeto.dataTermino)}
                   </p>
                 </div>
               </div>
@@ -892,7 +932,9 @@ export default function ProjetoDetailPage() {
               </button>
             )}
           </div>
-          {projeto.despesas.length === 0 ? (
+          {!loadedTabs.has("Despesas") && tabLoading ? (
+            <div className="flex justify-center py-8"><LoadingSpinner /></div>
+          ) : (projeto.despesas ?? []).length === 0 ? (
             <p className="text-muted text-center py-8">Nenhuma despesa registrada</p>
           ) : (
             <div className="overflow-x-auto">
@@ -909,7 +951,7 @@ export default function ProjetoDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {projeto.despesas.map((despesa) => (
+                  {(projeto.despesas ?? []).map((despesa) => (
                     <tr key={despesa.id}>
                       <td className="px-4 py-3 font-medium">{despesa.descricao}</td>
                       <td className="px-4 py-3">{despesa.rubrica.nome}</td>
@@ -919,7 +961,7 @@ export default function ProjetoDetailPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        {new Date(despesa.dataDespesa).toLocaleDateString("pt-BR")}
+                        {formatDate(despesa.dataDespesa)}
                       </td>
                       <td className="px-4 py-3">
                           <Badge
@@ -1020,11 +1062,13 @@ export default function ProjetoDetailPage() {
             </label>
             )}
           </div>
-          {projeto.documentosProjeto.length === 0 ? (
+          {!loadedTabs.has("Documentos") && tabLoading ? (
+            <div className="flex justify-center py-8"><LoadingSpinner /></div>
+          ) : (projeto.documentosProjeto ?? []).length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum documento anexado</p>
           ) : (
             <div className="space-y-3">
-              {projeto.documentosProjeto.map((doc) => (
+              {(projeto.documentosProjeto ?? []).map((doc) => (
                 <div
                   key={doc.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-surface-hover"
@@ -1049,7 +1093,7 @@ export default function ProjetoDetailPage() {
                       <p className="font-medium text-foreground">{doc.nomeArquivo}</p>
                       <p className="text-sm text-muted">
                         Enviado por {doc.usuario.nome} em{" "}
-                        {new Date(doc.dataUpload).toLocaleDateString("pt-BR")}
+                        {formatDate(doc.dataUpload)}
                       </p>
                     </div>
                   </div>
@@ -1081,7 +1125,7 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <h2 className="text-lg font-semibold text-foreground mb-4">Diagrama de Gantt</h2>
           <ProjectGanttChart
-            milestones={projeto.milestones}
+            milestones={projeto.milestones ?? []}
             projectStart={projeto.dataInicio}
             projectEnd={projeto.dataTermino}
           />
@@ -1098,11 +1142,13 @@ export default function ProjetoDetailPage() {
             </button>
             )}
           </div>
-          {projeto.milestones.length === 0 ? (
+          {!loadedTabs.has("Marcos") && tabLoading ? (
+            <div className="flex justify-center py-8"><LoadingSpinner /></div>
+          ) : (projeto.milestones ?? []).length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum marco cadastrado</p>
           ) : (
             <div className="space-y-3">
-              {projeto.milestones.map((m) => (
+              {(projeto.milestones ?? []).map((m) => (
                 <div
                   key={m.id}
                   className={`p-4 rounded-lg border ${
@@ -1121,9 +1167,9 @@ export default function ProjetoDetailPage() {
                         <p className="text-sm text-muted mb-2">{m.descricao}</p>
                       )}
                       <div className="flex items-center gap-4 text-sm text-muted">
-                          <span>Previsão: {new Date(m.dataPrevista).toLocaleDateString("pt-BR")}</span>
+                          <span>Previsão: {formatDate(m.dataPrevista)}</span>
                         {m.dataExecucao && (
-                          <span>Executado: {new Date(m.dataExecucao).toLocaleDateString("pt-BR")}</span>
+                            <span>Executado: {formatDate(m.dataExecucao)}</span>
                         )}
                         <span>{m._count.despesas} despesa(s)</span>
                         <span>{Number(m.percentualPrevisto)}% previsto</span>
@@ -1187,7 +1233,7 @@ export default function ProjetoDetailPage() {
               categoria: r.categoria,
               saldo: Number(r.valorAlocado) - Number(r.valorGasto),
             }))}
-            milestones={projeto.milestones.map((m) => ({
+            milestones={(projeto.milestones ?? []).map((m) => ({
               id: m.id,
               nome: m.nome,
             }))}
@@ -1338,7 +1384,7 @@ export default function ProjetoDetailPage() {
             <div className="space-y-1.5">
               <label className="fluxfin-label">Predecessores (opcional)</label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3">
-                {projeto?.milestones
+                {(projeto?.milestones ?? [])
                   .filter((m) => m.id !== editingMilestone)
                   .map((m) => (
                     <label key={m.id} className="flex items-center gap-2 cursor-pointer">
@@ -1357,7 +1403,7 @@ export default function ProjetoDetailPage() {
                       <span className="text-sm text-foreground">{m.nome}</span>
                     </label>
                   ))}
-                {projeto?.milestones.filter((m) => m.id !== editingMilestone).length === 0 && (
+                {(projeto?.milestones ?? []).filter((m) => m.id !== editingMilestone).length === 0 && (
                   <p className="text-xs text-muted">Nenhum outro marco disponível</p>
                 )}
               </div>

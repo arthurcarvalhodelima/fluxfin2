@@ -15,6 +15,7 @@ interface ProjetoOption {
 interface RelatorioData {
   geradoEm: string;
   geradoPor: string;
+  tipo: string;
   projeto: {
     codigo: string;
     titulo: string;
@@ -73,15 +74,14 @@ export default function RelatoriosPage() {
       fetch("/api/projetos")
         .then((res) => res.json())
         .then((data) => {
-          if (Array.isArray(data)) {
-            setProjetos(
-              data.map((p: ProjetoOption) => ({
-                id: p.id,
-                codigo: p.codigo,
-                titulo: p.titulo,
-              }))
-            );
-          }
+          const projetos = data.projetos || (Array.isArray(data) ? data : []);
+          setProjetos(
+            projetos.map((p: ProjetoOption) => ({
+              id: p.id,
+              codigo: p.codigo,
+              titulo: p.titulo,
+            }))
+          );
           setLoadingProjetos(false);
         })
         .catch(() => setLoadingProjetos(false));

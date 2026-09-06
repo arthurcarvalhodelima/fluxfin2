@@ -127,6 +127,7 @@ export default function ProjectGanttChart({
   const statusConfig = {
     completed: { bar: "bg-success", label: "text-white", text: "Concluído" },
     inProgress: { bar: "bg-primary", label: "text-white", text: "Em andamento" },
+    overdue: { bar: "bg-danger", label: "text-white", text: "Atrasado" },
     pending: { bar: "bg-gray-300", label: "text-gray-700", text: "Pendente" },
   };
 
@@ -177,14 +178,18 @@ export default function ProjectGanttChart({
           const isCompleted = m.isCompleted;
           const now = new Date();
           const isInFuture = m.startDate > now;
+          const isOverdue = !isCompleted && !isInFuture && m.endDate < now;
           const isActive =
-            !isCompleted && !isInFuture && m.endDate >= now;
+            !isCompleted && !isInFuture && !isOverdue && m.endDate >= now;
 
           let barClass = statusConfig.pending.bar;
           let labelClass = statusConfig.pending.label;
           if (isCompleted) {
             barClass = statusConfig.completed.bar;
             labelClass = statusConfig.completed.label;
+          } else if (isOverdue) {
+            barClass = statusConfig.overdue.bar;
+            labelClass = statusConfig.overdue.label;
           } else if (isActive) {
             barClass = statusConfig.inProgress.bar;
             labelClass = statusConfig.inProgress.label;
@@ -230,7 +235,7 @@ export default function ProjectGanttChart({
                     left: `${m.leftPercent}%`,
                     width: `${Math.max(m.widthPercent, 1.5)}%`,
                   }}
-                  title={`${m.nome}\n${m.startDate.toLocaleDateString("pt-BR")} a ${m.endDate.toLocaleDateString("pt-BR")}\nPrevisto: ${m.percentualPrevisto}%\nStatus: ${isCompleted ? "Concluído" : isActive ? "Em andamento" : "Pendente"}`}
+                  title={`${m.nome}\n${m.startDate.toLocaleDateString("pt-BR")} a ${m.endDate.toLocaleDateString("pt-BR")}\nPrevisto: ${m.percentualPrevisto}%\nStatus: ${isCompleted ? "Concluído" : isOverdue ? "Atrasado" : isActive ? "Em andamento" : "Pendente"}`}
                 >
                   <div
                     className={`h-full rounded-md ${barClass} transition-all duration-300`}
@@ -286,6 +291,10 @@ export default function ProjectGanttChart({
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-primary" />
           <span className="text-muted">Em andamento</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-danger" />
+          <span className="text-muted">Atrasado</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-gray-300" />

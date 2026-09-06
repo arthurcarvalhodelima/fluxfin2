@@ -41,18 +41,6 @@ export async function GET(
         },
       },
       rubricas: true,
-      despesas: {
-        include: {
-          rubrica: { select: { id: true, nome: true, categoria: true } },
-          usuario: { select: { nome: true } },
-        },
-        orderBy: { dataDespesa: 'desc' },
-      },
-      documentosProjeto: {
-        include: { usuario: { select: { nome: true } } },
-        orderBy: { dataUpload: 'desc' },
-      },
-      milestones: { orderBy: { dataPrevista: 'asc' }, include: { _count: { select: { despesas: true } }, predecessorDe: { select: { id: true, nome: true } } } },
     },
   })
 
