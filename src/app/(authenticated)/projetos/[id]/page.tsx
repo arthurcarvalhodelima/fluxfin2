@@ -305,7 +305,7 @@ export default function ProjetoDetailPage() {
         return m && !m.dataExecucao;
       });
       if (incomplete.length > 0) {
-        alert(`Nao e possivel concluir: o(s) predecessor(es) "${incomplete.map((p) => p.nome).join('", "')}" ainda nao foi(foram) concluido(s)`);
+        alert(`Não é possível concluir: o(s) predecessor(es) "${incomplete.map((p) => p.nome).join('", "')}" ainda não foi(foram) concluído(s)`);
         return;
       }
     }
@@ -477,7 +477,7 @@ export default function ProjetoDetailPage() {
   if (!projeto) {
     return (
       <div className="text-center py-20 text-muted">
-        Projeto nao encontrado
+        Projeto não encontrado
       </div>
     );
   }
@@ -1135,7 +1135,7 @@ export default function ProjetoDetailPage() {
               <LoadingSpinner size="lg" />
             </div>
           ) : !pertCpm || pertCpm.atividades.length === 0 ? (
-            <p className="text-muted text-center py-8">Nenhum milestone encontrado para calcular o caminho critico</p>
+            <p className="text-muted text-center py-8">Nenhum milestone encontrado para calcular o caminho crítico</p>
           ) : (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1283,10 +1283,10 @@ export default function ProjetoDetailPage() {
                     </label>
                   ))}
                 {projeto?.milestones.filter((m) => m.id !== editingMilestone).length === 0 && (
-                  <p className="text-xs text-muted">Nenhum outro marco disponivel</p>
+                  <p className="text-xs text-muted">Nenhum outro marco disponível</p>
                 )}
               </div>
-              <p className="text-xs text-muted">Marcos selecionados devem ser concluidos antes deste.</p>
+              <p className="text-xs text-muted">Marcos selecionados devem ser concluídos antes deste.</p>
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <button onClick={() => setShowMilestoneModal(false)} className="fluxfin-btn-ghost">
@@ -1312,13 +1312,13 @@ export default function ProjetoDetailPage() {
         >
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Usuario</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Usuário</label>
               <select
                 value={newMemberId}
                 onChange={(e) => setNewMemberId(e.target.value)}
                 className="fluxfin-input w-full"
               >
-                <option value="">Selecione um usuario...</option>
+                <option value="">Selecione um usuário...</option>
                 {availableUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.nome} ({u.email})
@@ -1326,7 +1326,7 @@ export default function ProjetoDetailPage() {
                 ))}
               </select>
               {availableUsers.length === 0 && (
-                <p className="text-xs text-muted mt-1">Nenhum usuario disponivel para adicionar</p>
+                <p className="text-xs text-muted mt-1">Nenhum usuário disponível para adicionar</p>
               )}
             </div>
             <div>
@@ -1376,7 +1376,7 @@ export default function ProjetoDetailPage() {
                 onChange={(e) => setCompletionDate(e.target.value)}
                 className="fluxfin-input w-full"
               />
-              <p className="text-xs text-muted mt-1">Se nao selecionar nenhuma data, sera usada a data de hoje.</p>
+              <p className="text-xs text-muted mt-1">Se não selecionar nenhuma data, será usada a data de hoje.</p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

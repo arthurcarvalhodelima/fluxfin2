@@ -196,7 +196,7 @@ export default function NovoProjetoPage() {
 
           {rubricas.length === 0 ? (
             <p className="text-sm text-muted text-center py-4">
-              Nenhuma rubrica adicionada. Clique em &quot;Adicionar Rubrica&quot; para comecar.
+              Nenhuma rubrica adicionada. Clique em &quot;Adicionar Rubrica&quot; para começar.
             </p>
           ) : (
             <div className="space-y-4">

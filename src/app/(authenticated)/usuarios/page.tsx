@@ -203,7 +203,7 @@ export default function UsuariosPage() {
             ? `Tem certeza que deseja ${
                 toggleUser?.ativo ? "desativar" : "ativar"
               } o usuario "${toggleUser?.nome}"?`
-            : `Tem certeza que deseja excluir permanentemente o usuario "${deleteConfirm?.nome}"? Esta acao nao pode ser desfeita.`
+            : `Tem certeza que deseja excluir permanentemente o usuario "${deleteConfirm?.nome}"? Esta ação não pode ser desfeita.`
         }
         confirmLabel={
           isToggle

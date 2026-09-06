@@ -70,7 +70,7 @@ export async function PUT(
     const incomplete = existing.predecessorDe.filter((p) => !p.dataExecucao)
     if (incomplete.length > 0) {
       return NextResponse.json({
-        error: `Nao e possivel concluir: o(s) predecessor(es) "${incomplete.map((p) => p.nome).join('", "')}" ainda nao foi(foram) concluido(s)`,
+        error: `Não é possível concluir: o(s) predecessor(es) "${incomplete.map((p) => p.nome).join('", "')}" ainda não foi(foram) concluído(s)`,
       }, { status: 400 })
     }
   }
