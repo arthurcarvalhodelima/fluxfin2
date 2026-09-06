@@ -36,7 +36,7 @@ interface Projeto {
     valor: number;
     dataDespesa: string;
     status: string;
-    rubrica: { nome: string; categoria: string };
+    rubrica: { id: string; nome: string; categoria: string };
     usuario: { nome: string };
   }[];
   documentosProjeto: {
@@ -204,11 +204,29 @@ export default function ProjetoDetailPage() {
   async function handleUpdateExpenseStatus(despesaId: string, newStatus: string) {
     setProjeto((prev) => {
       if (!prev) return prev;
+      const despesa = prev.despesas.find((d) => d.id === despesaId);
+      if (!despesa) return prev;
+
+      const counted = ["APROVADA", "PAGA"];
+      const wasCounted = counted.includes(despesa.status);
+      const willCount = counted.includes(newStatus);
+      const valor = Number(despesa.valor);
+      const rubricaId = despesa.rubrica.id;
+
       return {
         ...prev,
         despesas: prev.despesas.map((d) =>
           d.id === despesaId ? { ...d, status: newStatus } : d
         ),
+        rubricas: prev.rubricas.map((r) => {
+          if (r.id !== rubricaId) return r;
+          const newGasto = wasCounted && !willCount
+            ? Number(r.valorGasto) - valor
+            : !wasCounted && willCount
+            ? Number(r.valorGasto) + valor
+            : Number(r.valorGasto);
+          return { ...r, valorGasto: String(newGasto) };
+        }),
       };
     });
     try {

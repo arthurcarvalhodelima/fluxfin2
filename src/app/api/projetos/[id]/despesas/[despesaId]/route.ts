@@ -9,6 +9,12 @@ const updateStatusSchema = z.object({
   status: z.enum(['PENDENTE', 'APROVADA', 'REJEITADA', 'PAGA']),
 })
 
+const COUNTED_STATUSES = ['APROVADA', 'PAGA']
+
+function shouldCount(status: string) {
+  return COUNTED_STATUSES.includes(status)
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; despesaId: string }> }
@@ -38,9 +44,30 @@ export async function PATCH(
     return NextResponse.json({ error: 'Despesa não encontrada' }, { status: 404 })
   }
 
-  const despesa = await prisma.despesa.update({
-    where: { id: despesaId },
-    data: { status: parsed.data.status },
+  const newStatus = parsed.data.status
+  const oldStatus = existing.status
+  const wasCounted = shouldCount(oldStatus)
+  const willCount = shouldCount(newStatus)
+
+  const despesa = await prisma.$transaction(async (tx) => {
+    const updated = await tx.despesa.update({
+      where: { id: despesaId },
+      data: { status: newStatus },
+    })
+
+    if (!wasCounted && willCount) {
+      await tx.rubrica.update({
+        where: { id: existing.rubricaId },
+        data: { valorGasto: { increment: Number(existing.valor) } },
+      })
+    } else if (wasCounted && !willCount) {
+      await tx.rubrica.update({
+        where: { id: existing.rubricaId },
+        data: { valorGasto: { decrement: Number(existing.valor) } },
+      })
+    }
+
+    return updated
   })
 
   await createAuditLog({
@@ -49,8 +76,8 @@ export async function PATCH(
     entity: 'Despesa',
     entityId: despesaId,
     action: 'ATUALIZAR',
-    oldData: { status: existing.status },
-    newData: { status: parsed.data.status },
+    oldData: { status: oldStatus },
+    newData: { status: newStatus },
   })
 
   return NextResponse.json(despesa)

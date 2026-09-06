@@ -43,7 +43,7 @@ export async function GET(
       rubricas: true,
       despesas: {
         include: {
-          rubrica: { select: { nome: true, categoria: true } },
+          rubrica: { select: { id: true, nome: true, categoria: true } },
           usuario: { select: { nome: true } },
         },
         orderBy: { dataDespesa: 'desc' },

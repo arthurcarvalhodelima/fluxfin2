@@ -303,7 +303,9 @@ async function main() {
           ? randomChoice(milestones).id
           : null;
 
-        await prisma.despesa.create({
+        const expenseStatus = randomChoice(statuses);
+
+        const expense = await prisma.despesa.create({
           data: {
             projetoId: project.id,
             rubricaId: rubric.id,
@@ -311,10 +313,17 @@ async function main() {
             descricao: randomChoice(DESPESA_DESCRIPTIONS),
             valor: value,
             dataDespesa: expenseDate,
-            status: randomChoice(statuses),
+            status: expenseStatus,
             milestoneId,
           },
         });
+
+        if (expenseStatus === StatusDespesa.APROVADA || expenseStatus === StatusDespesa.PAGA) {
+          await prisma.rubrica.update({
+            where: { id: rubric.id },
+            data: { valorGasto: { increment: value } },
+          });
+        }
 
         remaining -= value;
         totalExpenses++;

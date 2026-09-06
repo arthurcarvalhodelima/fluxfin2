@@ -111,11 +111,6 @@ export async function POST(
       },
     })
 
-    await tx.rubrica.update({
-      where: { id: parsed.data.rubricaId },
-      data: { valorGasto: { increment: parsed.data.valor } },
-    })
-
     return expense
   })
 
