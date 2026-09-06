@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import Badge from "@/components/Badge";
+import ProjectGanttChart from "@/components/ProjectGanttChart";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Modal from "@/components/Modal";
 import ExpenseForm from "@/components/ExpenseForm";
@@ -1066,52 +1067,11 @@ export default function ProjetoDetailPage() {
       {activeTab === "Gantt" && (
         <div className="fluxfin-card">
           <h2 className="text-lg font-semibold text-foreground mb-4">Diagrama de Gantt</h2>
-          <div className="space-y-4">
-            {projeto.equipeProjeto.length > 0 && (
-              <div className="p-6 text-center text-muted bg-surface-hover rounded-lg">
-                <svg
-                  className="w-12 h-12 mx-auto mb-3 text-muted"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <p className="font-medium">Diagrama de Gantt</p>
-                <p className="text-sm mt-1">
-                  Visualização cronograma de atividades do projeto
-                </p>
-                <div className="mt-6 space-y-2">
-                  <div className="flex items-center gap-4">
-                    <span className="w-32 text-sm text-left text-muted">
-                      Início do projeto
-                    </span>
-                    <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full"
-                        style={{ width: `${projeto.progressoFisico}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium">{projeto.progressoFisico}%</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted">
-                    <span className="w-32 text-left">
-                      {new Date(projeto.dataInicio).toLocaleDateString("pt-BR")}
-                    </span>
-                    <span className="flex-1" />
-                    <span>
-                      {new Date(projeto.dataTermino).toLocaleDateString("pt-BR")}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <ProjectGanttChart
+            milestones={projeto.milestones}
+            projectStart={projeto.dataInicio}
+            projectEnd={projeto.dataTermino}
+          />
         </div>
       )}
 
