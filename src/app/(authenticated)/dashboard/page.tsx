@@ -140,31 +140,31 @@ export default function DashboardPage() {
             label: "SPI",
             value: data.evm.spi.toFixed(2),
             color: data.evm.spi >= 1 ? "text-green-600" : "text-red-600",
-            desc: "Schedule Performance Index",
+            desc: "Índice de Desempenho de Cronograma (SPI)",
           },
           {
             label: "EAC",
             value: formatCurrency(data.evm.eac),
             color: data.evm.eac <= data.totalOrcamento ? "text-green-600" : "text-red-600",
-            desc: "Estimate At Completion",
+            desc: "Estimativa ao Término (EAC)",
           },
           {
             label: "ETC",
             value: formatCurrency(data.evm.etc),
             color: "text-foreground",
-            desc: "Estimate To Complete",
+            desc: "Estimativa para Concluir (ETC)",
           },
           {
             label: "VAC",
             value: formatCurrency(data.evm.vac),
             color: data.evm.vac >= 0 ? "text-green-600" : "text-red-600",
-            desc: "Variance At Completion",
+            desc: "Variação ao Término (VAC)",
           },
           {
             label: "TCPI",
             value: data.evm.tcpi.toFixed(2),
             color: data.evm.tcpi <= 1 ? "text-green-600" : "text-red-600",
-            desc: "To-Complete Performance Index",
+            desc: "Índice de Desempenho para Concluir (TCPI)",
           },
         ].map((card) => (
           <div key={card.label} className="fluxfin-card">

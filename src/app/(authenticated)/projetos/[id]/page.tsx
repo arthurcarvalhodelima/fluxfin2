@@ -737,31 +737,31 @@ export default function ProjetoDetailPage() {
                     label: "CPI",
                     value: evmMetrics.cpi.toFixed(2),
                     color: evmMetrics.cpi >= 1 ? "text-green-600" : "text-red-600",
-                    desc: "Custo",
+                    desc: "Custo (CPI)",
                   },
                   {
                     label: "SPI",
                     value: evmMetrics.spi.toFixed(2),
                     color: evmMetrics.spi >= 1 ? "text-green-600" : "text-red-600",
-                    desc: "Cronograma",
+                    desc: "Cronograma (SPI)",
                   },
                   {
                     label: "EAC",
                     value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.eac),
                     color: evmMetrics.eac <= evmMetrics.BAC ? "text-green-600" : "text-red-600",
-                    desc: "Estimativa Final",
+                    desc: "Estimativa Final (EAC)",
                   },
                   {
                     label: "ETC",
                     value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.etc),
                     color: "text-foreground",
-                    desc: "Para Concluir",
+                    desc: "Para Concluir (ETC)",
                   },
                   {
                     label: "VAC",
                     value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.vac),
                     color: evmMetrics.vac >= 0 ? "text-green-600" : "text-red-600",
-                    desc: "Variação",
+                    desc: "Variação (VAC)",
                   },
                 ].map((card) => (
                   <div key={card.label} className="p-4 rounded-lg bg-surface-hover">
