@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import DataTable, { Column } from "@/components/DataTable";
 import Badge from "@/components/Badge";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -80,6 +81,8 @@ function StatusDropdown({ projeto, onStatusChange }: { projeto: Projeto; onStatu
 
 export default function ProjetosPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.papelSistema === "ADMIN";
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
@@ -121,7 +124,11 @@ export default function ProjetosPage() {
       key: "status",
       header: "Status",
       render: (item) => (
-        <StatusDropdown projeto={item} onStatusChange={handleStatusChange} />
+        isAdmin ? (
+          <StatusDropdown projeto={item} onStatusChange={handleStatusChange} />
+        ) : (
+          <Badge variant={statusVariants[item.status] || "default"}>{item.status}</Badge>
+        )
       ),
     },
     {

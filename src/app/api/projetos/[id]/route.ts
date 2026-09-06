@@ -83,6 +83,10 @@ export async function PUT(
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
+  if (session.user.papelSistema !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+  }
+
   const { id } = await params
   const body = await request.json()
   const parsed = updateProjectSchema.safeParse(body)
@@ -127,6 +131,10 @@ export async function DELETE(
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
+  if (session.user.papelSistema !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
   }
 
   const { id } = await params

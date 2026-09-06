@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import FormField from "@/components/FormField";
@@ -25,6 +25,12 @@ export default function NovoProjetoPage() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (session && session.user?.papelSistema !== "ADMIN") {
+      router.push("/dashboard");
+    }
+  }, [session, router]);
 
   const [codigo, setCodigo] = useState("");
   const [titulo, setTitulo] = useState("");

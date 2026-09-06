@@ -54,6 +54,10 @@ export async function POST(
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
+  if (session.user.papelSistema !== 'ADMIN') {
+    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+  }
+
   const { id } = await params
   const body = await request.json()
   const parsed = createExpenseSchema.safeParse(body)

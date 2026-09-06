@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Badge from "@/components/Badge";
 import ProjectGanttChart from "@/components/ProjectGanttChart";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -132,6 +133,8 @@ const categoriaLabels: Record<string, string> = {
 export default function ProjetoDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.papelSistema === "ADMIN";
   const [projeto, setProjeto] = useState<Projeto | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Resumo");
@@ -576,7 +579,7 @@ export default function ProjetoDetailPage() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold text-foreground">{projeto.titulo}</h1>
-            <StatusDropdown projeto={projeto} onStatusChange={handleUpdateProjectStatus} />
+            {isAdmin && <StatusDropdown projeto={projeto} onStatusChange={handleUpdateProjectStatus} />}
           </div>
           <p className="text-muted">
             Código: {projeto.codigo}
@@ -757,9 +760,11 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Equipe do Projeto</h2>
-            <button onClick={openAddMemberModal} className="fluxfin-btn-primary">
-              Adicionar Membro
-            </button>
+            {isAdmin && (
+              <button onClick={openAddMemberModal} className="fluxfin-btn-primary">
+                Adicionar Membro
+              </button>
+            )}
           </div>
           {projeto.equipeProjeto.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum membro na equipe</p>
@@ -783,7 +788,7 @@ export default function ProjetoDetailPage() {
                     <Badge variant={membro.papel === "COORDENADOR" ? "primary" : "default"}>
                       {membro.papel}
                     </Badge>
-                    {!(membro.papel === "COORDENADOR" && projeto.equipeProjeto.filter((m) => m.papel === "COORDENADOR").length === 1) && (
+                    {isAdmin && !(membro.papel === "COORDENADOR" && projeto.equipeProjeto.filter((m) => m.papel === "COORDENADOR").length === 1) && (
                       <button
                         onClick={() => {
                           if (confirm(`Remover ${membro.usuario.nome} da equipe?`)) {
@@ -878,12 +883,14 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Despesas</h2>
-            <button
-              onClick={() => setShowExpenseModal(true)}
-              className="fluxfin-btn-primary"
-            >
-              Nova Despesa
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setShowExpenseModal(true)}
+                className="fluxfin-btn-primary"
+              >
+                Nova Despesa
+              </button>
+            )}
           </div>
           {projeto.despesas.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhuma despesa registrada</p>
@@ -930,58 +937,60 @@ export default function ProjetoDetailPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">{despesa.usuario.nome}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          {despesa.status === "PENDENTE" && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
-                                className="text-xs px-2 py-1 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
-                              >
-                                Aprovar
-                              </button>
-                              <button
-                                onClick={() => handleUpdateExpenseStatus(despesa.id, "REJEITADA")}
-                                className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
-                              >
-                                Rejeitar
-                              </button>
-                            </>
-                          )}
-                          {despesa.status === "APROVADA" && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateExpenseStatus(despesa.id, "PAGA")}
-                                className="text-xs px-2 py-1 rounded bg-primary/10 text-primary-dark hover:bg-primary/20 transition-colors"
-                              >
-                                Pagar
-                              </button>
+                        <td className="px-4 py-3">
+                          {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            {despesa.status === "PENDENTE" && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
+                                  className="text-xs px-2 py-1 rounded bg-success/10 text-success hover:bg-success/20 transition-colors"
+                                >
+                                  Aprovar
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateExpenseStatus(despesa.id, "REJEITADA")}
+                                  className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                                >
+                                  Rejeitar
+                                </button>
+                              </>
+                            )}
+                            {despesa.status === "APROVADA" && (
+                              <>
+                                <button
+                                  onClick={() => handleUpdateExpenseStatus(despesa.id, "PAGA")}
+                                  className="text-xs px-2 py-1 rounded bg-primary/10 text-primary-dark hover:bg-primary/20 transition-colors"
+                                >
+                                  Pagar
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateExpenseStatus(despesa.id, "PENDENTE")}
+                                  className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                                >
+                                  Reverter
+                                </button>
+                              </>
+                            )}
+                            {despesa.status === "REJEITADA" && (
                               <button
                                 onClick={() => handleUpdateExpenseStatus(despesa.id, "PENDENTE")}
                                 className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
                               >
                                 Reverter
                               </button>
-                            </>
+                            )}
+                            {despesa.status === "PAGA" && (
+                              <button
+                                onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
+                                className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+                              >
+                                Reverter
+                              </button>
+                            )}
+                          </div>
                           )}
-                          {despesa.status === "REJEITADA" && (
-                            <button
-                              onClick={() => handleUpdateExpenseStatus(despesa.id, "PENDENTE")}
-                              className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
-                            >
-                              Reverter
-                            </button>
-                          )}
-                          {despesa.status === "PAGA" && (
-                            <button
-                              onClick={() => handleUpdateExpenseStatus(despesa.id, "APROVADA")}
-                              className="text-xs px-2 py-1 rounded bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
-                            >
-                              Reverter
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                        </td>
                     </tr>
                   ))}
                 </tbody>
@@ -995,6 +1004,7 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Documentos</h2>
+            {isAdmin && (
             <label className={`fluxfin-btn-primary cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
               {uploading ? 'Enviando...' : 'Enviar Documento'}
               <input
@@ -1008,6 +1018,7 @@ export default function ProjetoDetailPage() {
                 }}
               />
             </label>
+            )}
           </div>
           {projeto.documentosProjeto.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum documento anexado</p>
@@ -1050,12 +1061,14 @@ export default function ProjetoDetailPage() {
                     >
                       Baixar
                     </button>
+                    {isAdmin && (
                     <button
                       onClick={() => handleDeleteDocument(doc.id)}
                       className="text-xs px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
                     >
                       Excluir
                     </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1079,9 +1092,11 @@ export default function ProjetoDetailPage() {
         <div className="fluxfin-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Marcos do Projeto</h2>
+            {isAdmin && (
             <button onClick={() => openMilestoneModal()} className="fluxfin-btn-primary">
               + Novo Marco
             </button>
+            )}
           </div>
           {projeto.milestones.length === 0 ? (
             <p className="text-muted text-center py-8">Nenhum marco cadastrado</p>
@@ -1115,6 +1130,8 @@ export default function ProjetoDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {isAdmin && (
+                      <>
                       <button
                         onClick={() => {
                           if (m.dataExecucao) {
@@ -1144,6 +1161,8 @@ export default function ProjetoDetailPage() {
                       >
                         Excluir
                       </button>
+                      </>
+                      )}
                     </div>
                   </div>
                 </div>
