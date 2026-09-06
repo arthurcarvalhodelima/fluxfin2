@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import Badge from "@/components/Badge";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -65,6 +65,57 @@ const statusVariants: Record<string, "success" | "warning" | "danger" | "info" |
   SUSPENSO: "warning",
   CANCELADO: "danger",
 };
+
+const statusOptions = [
+  { value: "ATIVO", label: "Ativo" },
+  { value: "CONCLUIDO", label: "Concluido" },
+  { value: "SUSPENSO", label: "Suspenso" },
+  { value: "CANCELADO", label: "Cancelado" },
+];
+
+function StatusDropdown({ projeto, onStatusChange }: { projeto: { id: string; status: string }; onStatusChange: (status: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className="cursor-pointer"
+      >
+        <Badge variant={statusVariants[projeto.status] || "default"}>
+          {projeto.status}
+        </Badge>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 bg-surface border border-border rounded-lg shadow-lg py-1 min-w-[140px]">
+          {statusOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                if (opt.value !== projeto.status) onStatusChange(opt.value);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-surface-hover transition-colors ${
+                opt.value === projeto.status ? "font-semibold text-primary" : "text-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const categoriaLabels: Record<string, string> = {
   RECURSOS_HUMANOS: "Recursos Humanos",
@@ -225,7 +276,7 @@ export default function ProjetoDetailPage() {
             : !wasCounted && willCount
             ? Number(r.valorGasto) + valor
             : Number(r.valorGasto);
-          return { ...r, valorGasto: String(newGasto) };
+          return { ...r, valorGasto: newGasto };
         }),
       };
     });
@@ -279,6 +330,21 @@ export default function ProjetoDetailPage() {
     );
   }
 
+  async function handleUpdateProjectStatus(newStatus: string) {
+    setProjeto((prev) => prev ? { ...prev, status: newStatus } : prev);
+    try {
+      await fetch(`/api/projetos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {
+      const res = await fetch(`/api/projetos/${id}`);
+      const json = await res.json();
+      setProjeto(json);
+    }
+  }
+
   const totalRubricas = projeto.rubricas.reduce((sum, r) => sum + Number(r.valorAlocado), 0);
   const saldo = Number(projeto.orcamentoGlobal) - totalGasto;
 
@@ -288,9 +354,7 @@ export default function ProjetoDetailPage() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold text-foreground">{projeto.titulo}</h1>
-            <Badge variant={statusVariants[projeto.status] || "default"}>
-              {projeto.status}
-            </Badge>
+            <StatusDropdown projeto={projeto} onStatusChange={handleUpdateProjectStatus} />
           </div>
           <p className="text-muted">
             Codigo: {projeto.codigo}
