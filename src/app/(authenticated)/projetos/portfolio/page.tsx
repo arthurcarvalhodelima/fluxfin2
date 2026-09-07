@@ -10,7 +10,7 @@ export default async function PortfolioPage() {
   const userProjectIds = await getUserProjectIds(session!.user.id, session!.user.papelSistema);
 
   const where: Record<string, unknown> = { deletedAt: null };
-  if (userProjectIds.length > 0) {
+  if (userProjectIds !== null) {
     where.id = { in: userProjectIds };
   }
 

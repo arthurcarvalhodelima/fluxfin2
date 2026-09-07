@@ -8,8 +8,8 @@ export async function checkProjectAccess(projetoId: string, userId: string, user
   return !!membership && !membership.deletedAt
 }
 
-export async function getUserProjectIds(userId: string, userRole: string): Promise<string[]> {
-  if (userRole === 'ADMIN') return []
+export async function getUserProjectIds(userId: string, userRole: string): Promise<string[] | null> {
+  if (userRole === 'ADMIN') return null
   const memberships = await prisma.equipeProjeto.findMany({
     where: { usuarioId: userId, deletedAt: null },
     select: { projetoId: true },

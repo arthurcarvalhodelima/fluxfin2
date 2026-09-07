@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const where: any = { deletedAt: null }
 
-  if (userProjectIds.length > 0) {
+  if (userProjectIds !== null) {
     where.projetoId = { in: userProjectIds }
   }
 

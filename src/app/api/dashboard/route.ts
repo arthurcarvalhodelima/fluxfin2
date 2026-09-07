@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
-    const projectFilter = userProjectIds.length > 0 ? { id: { in: userProjectIds }, deletedAt: null } : { deletedAt: null }
+    const projectFilter = userProjectIds !== null ? { id: { in: userProjectIds }, deletedAt: null } : { deletedAt: null }
 
     const [
       totalProjetos,
@@ -40,7 +40,7 @@ export async function GET() {
         where: {
           deletedAt: null,
           status: { in: ['APROVADA', 'PAGA'] },
-          ...(userProjectIds.length > 0 ? { projetoId: { in: userProjectIds } } : {}),
+          ...(userProjectIds !== null ? { projetoId: { in: userProjectIds } } : {}),
         },
         select: {
           valor: true,
