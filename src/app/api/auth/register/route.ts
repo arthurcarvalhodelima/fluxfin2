@@ -13,65 +13,70 @@ const registerSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
+  try {
+    const session = await auth()
 
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-  if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
-  }
+    if (session.user.papelSistema !== 'ADMIN') {
+      return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    }
 
-  const body = await request.json()
-  const result = registerSchema.safeParse(body)
+    const body = await request.json()
+    const result = registerSchema.safeParse(body)
 
-  if (!result.success) {
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { nome, email, senha, papelSistema } = result.data
+
+    const existingUser = await prisma.usuario.findUnique({
+      where: { email },
+    })
+
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Email já cadastrado' },
+        { status: 409 }
+      )
+    }
+
+    const hashedPassword = await bcrypt.hash(senha, 12)
+
+    const user = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        senha: hashedPassword,
+        papelSistema,
+      },
+    })
+
+    await createAuditLog({
+      userId: session.user.id,
+      entity: 'Usuario',
+      entityId: user.id,
+      action: 'CRIAR',
+      newData: { nome, email, papelSistema },
+    })
+
     return NextResponse.json(
-      { error: result.error.flatten().fieldErrors },
-      { status: 400 }
+      {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        papelSistema: user.papelSistema,
+      },
+      { status: 201 }
     )
+  } catch (error) {
+    console.error('Erro ao registrar usuário:', error)
+    return NextResponse.json({ error: 'Erro ao registrar usuário' }, { status: 500 })
   }
-
-  const { nome, email, senha, papelSistema } = result.data
-
-  const existingUser = await prisma.usuario.findUnique({
-    where: { email },
-  })
-
-  if (existingUser) {
-    return NextResponse.json(
-      { error: 'Email já cadastrado' },
-      { status: 409 }
-    )
-  }
-
-  const hashedPassword = await bcrypt.hash(senha, 12)
-
-  const user = await prisma.usuario.create({
-    data: {
-      nome,
-      email,
-      senha: hashedPassword,
-      papelSistema,
-    },
-  })
-
-  await createAuditLog({
-    userId: session.user.id,
-    entity: 'Usuario',
-    entityId: user.id,
-    action: 'CRIAR',
-    newData: { nome, email, papelSistema },
-  })
-
-  return NextResponse.json(
-    {
-      id: user.id,
-      nome: user.nome,
-      email: user.email,
-      papelSistema: user.papelSistema,
-    },
-    { status: 201 }
-  )
 }

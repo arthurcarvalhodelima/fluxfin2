@@ -15,114 +15,125 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    const projeto = await prisma.projeto.findUnique({ where: { id } })
+    if (!projeto) {
+      return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
+    }
+
+    const equipe = await prisma.equipeProjeto.findMany({
+      where: { projetoId: id, deletedAt: null },
+      include: {
+        usuario: { select: { id: true, nome: true, email: true } },
+      },
+      orderBy: { criadoEm: 'asc' },
+    })
+
+    if (session.user.papelSistema !== 'ADMIN') {
+      const masked = equipe.map(e => ({
+        ...e,
+        usuario: { ...e.usuario, nome: maskName(e.usuario.nome), email: maskEmail(e.usuario.email) },
+      }))
+      return NextResponse.json(masked)
+    }
+
+    return NextResponse.json(equipe)
+  } catch (error) {
+    console.error('Erro ao buscar equipe:', error)
+    return NextResponse.json({ error: 'Erro ao buscar equipe' }, { status: 500 })
   }
-
-  const { id } = await params
-
-  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-  }
-
-  const projeto = await prisma.projeto.findUnique({ where: { id } })
-  if (!projeto) {
-    return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
-  }
-
-  const equipe = await prisma.equipeProjeto.findMany({
-    where: { projetoId: id, deletedAt: null },
-    include: {
-      usuario: { select: { id: true, nome: true, email: true } },
-    },
-    orderBy: { criadoEm: 'asc' },
-  })
-
-  if (session.user.papelSistema !== 'ADMIN') {
-    const masked = equipe.map(e => ({
-      ...e,
-      usuario: { ...e.usuario, nome: maskName(e.usuario.nome), email: maskEmail(e.usuario.email) },
-    }))
-    return NextResponse.json(masked)
-  }
-
-  return NextResponse.json(equipe)
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-
-  if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
-  }
-
-  const { id } = await params
-  const body = await request.json()
-  const parsed = addMemberSchema.safeParse(body)
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
-  }
-
-  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-  }
-
-  const projeto = await prisma.projeto.findUnique({ where: { id } })
-  if (!projeto) {
-    return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
-  }
-
-  const usuario = await prisma.usuario.findUnique({ where: { id: parsed.data.usuarioId } })
-  if (!usuario || !usuario.ativo) {
-    return NextResponse.json({ error: 'Usuário não encontrado ou inativo' }, { status: 404 })
-  }
-
-  const existing = await prisma.equipeProjeto.findUnique({
-    where: { projetoId_usuarioId: { projetoId: id, usuarioId: parsed.data.usuarioId } },
-  })
-  if (existing) {
-    return NextResponse.json({ error: 'Usuário já faz parte da equipe' }, { status: 409 })
-  }
-
-  const equipe = await prisma.$transaction(async (tx) => {
-    const member = await tx.equipeProjeto.create({
-      data: {
-        projetoId: id,
-        usuarioId: parsed.data.usuarioId,
-        papel: parsed.data.papel,
-      },
-    })
-
-    const allMembers = await tx.equipeProjeto.findMany({ where: { projetoId: id, deletedAt: null } })
-    const hasCoordenador = allMembers.some(m => m.papel === 'COORDENADOR')
-
-    if (!hasCoordenador) {
-      throw new Error('A equipe deve ter pelo menos um COORDENADOR')
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
 
-    return member
-  })
+    if (session.user.papelSistema !== 'ADMIN') {
+      return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+    }
 
-  await createAuditLog({
-    userId: session.user.id,
-    projetoId: id,
-    entity: 'EquipeProjeto',
-    entityId: equipe.id,
-    action: 'ADICIONAR_MEMBRO',
-    newData: { usuarioId: parsed.data.usuarioId, papel: parsed.data.papel },
-  })
+    const { id } = await params
+    const body = await request.json()
+    const parsed = addMemberSchema.safeParse(body)
 
-  return NextResponse.json(equipe, { status: 201 })
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+    }
+
+    const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    const projeto = await prisma.projeto.findUnique({ where: { id } })
+    if (!projeto) {
+      return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
+    }
+
+    const usuario = await prisma.usuario.findUnique({ where: { id: parsed.data.usuarioId } })
+    if (!usuario || !usuario.ativo) {
+      return NextResponse.json({ error: 'Usuário não encontrado ou inativo' }, { status: 404 })
+    }
+
+    const existing = await prisma.equipeProjeto.findUnique({
+      where: { projetoId_usuarioId: { projetoId: id, usuarioId: parsed.data.usuarioId } },
+    })
+    if (existing) {
+      return NextResponse.json({ error: 'Usuário já faz parte da equipe' }, { status: 409 })
+    }
+
+    const equipe = await prisma.$transaction(async (tx) => {
+      const member = await tx.equipeProjeto.create({
+        data: {
+          projetoId: id,
+          usuarioId: parsed.data.usuarioId,
+          papel: parsed.data.papel,
+        },
+      })
+
+      const allMembers = await tx.equipeProjeto.findMany({ where: { projetoId: id, deletedAt: null } })
+      const hasCoordenador = allMembers.some(m => m.papel === 'COORDENADOR')
+
+      if (!hasCoordenador) {
+        throw new Error('A equipe deve ter pelo menos um COORDENADOR')
+      }
+
+      return member
+    })
+
+    await createAuditLog({
+      userId: session.user.id,
+      projetoId: id,
+      entity: 'EquipeProjeto',
+      entityId: equipe.id,
+      action: 'ADICIONAR_MEMBRO',
+      newData: { usuarioId: parsed.data.usuarioId, papel: parsed.data.papel },
+    })
+
+    return NextResponse.json(equipe, { status: 201 })
+  } catch (error) {
+    console.error('Erro ao adicionar membro:', error)
+    const message = error instanceof Error ? error.message : 'Erro ao adicionar membro'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 
 const removeMemberSchema = z.object({
@@ -133,60 +144,66 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-  if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
-  }
+    if (session.user.papelSistema !== 'ADMIN') {
+      return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+    }
 
-  const { id } = await params
-  const body = await request.json()
-  const parsed = removeMemberSchema.safeParse(body)
+    const { id } = await params
+    const body = await request.json()
+    const parsed = removeMemberSchema.safeParse(body)
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
-  }
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+    }
 
-  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-  }
+    const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
 
-  const existing = await prisma.equipeProjeto.findUnique({
-    where: { projetoId_usuarioId: { projetoId: id, usuarioId: parsed.data.usuarioId } },
-  })
-  if (!existing) {
-    return NextResponse.json({ error: 'Membro não encontrado na equipe' }, { status: 404 })
-  }
+    const existing = await prisma.equipeProjeto.findUnique({
+      where: { projetoId_usuarioId: { projetoId: id, usuarioId: parsed.data.usuarioId } },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: 'Membro não encontrado na equipe' }, { status: 404 })
+    }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.equipeProjeto.update({
-      where: { id: existing.id },
-      data: { deletedAt: new Date() },
+    await prisma.$transaction(async (tx) => {
+      await tx.equipeProjeto.update({
+        where: { id: existing.id },
+        data: { deletedAt: new Date() },
+      })
+
+      if (existing.papel === 'COORDENADOR') {
+        const remaining = await tx.equipeProjeto.findMany({
+          where: { projetoId: id, deletedAt: null },
+        })
+        const hasCoordenador = remaining.some(m => m.papel === 'COORDENADOR')
+        if (!hasCoordenador) {
+          throw new Error('A equipe deve ter pelo menos um COORDENADOR')
+        }
+      }
     })
 
-    if (existing.papel === 'COORDENADOR') {
-      const remaining = await tx.equipeProjeto.findMany({
-        where: { projetoId: id, deletedAt: null },
-      })
-      const hasCoordenador = remaining.some(m => m.papel === 'COORDENADOR')
-      if (!hasCoordenador) {
-        throw new Error('A equipe deve ter pelo menos um COORDENADOR')
-      }
-    }
-  })
+    await createAuditLog({
+      userId: session.user.id,
+      projetoId: id,
+      entity: 'EquipeProjeto',
+      entityId: existing.id,
+      action: 'REMOVER_MEMBRO',
+      oldData: { usuarioId: parsed.data.usuarioId, papel: existing.papel },
+    })
 
-  await createAuditLog({
-    userId: session.user.id,
-    projetoId: id,
-    entity: 'EquipeProjeto',
-    entityId: existing.id,
-    action: 'REMOVER_MEMBRO',
-    oldData: { usuarioId: parsed.data.usuarioId, papel: existing.papel },
-  })
-
-  return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Erro ao remover membro:', error)
+    const message = error instanceof Error ? error.message : 'Erro ao remover membro'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

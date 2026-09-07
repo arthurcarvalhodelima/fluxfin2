@@ -12,87 +12,92 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
+    const documentos = await prisma.documentoProjeto.findMany({
+      where: { projetoId: id, deletedAt: null },
+      include: {
+        usuario: { select: { id: true, nome: true } },
+      },
+      orderBy: { dataUpload: 'desc' },
+    })
+
+    if (session.user.papelSistema !== 'ADMIN') {
+      const masked = documentos.map(d => ({
+        ...d,
+        usuario: d.usuario ? { ...d.usuario, nome: maskName(d.usuario.nome) } : d.usuario,
+      }))
+      return NextResponse.json(masked)
+    }
+
+    return NextResponse.json(documentos)
+  } catch (error) {
+    console.error('Erro ao buscar documentos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar documentos' }, { status: 500 })
   }
-
-  const { id } = await params
-
-  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-  }
-
-  const documentos = await prisma.documentoProjeto.findMany({
-    where: { projetoId: id, deletedAt: null },
-    include: {
-      usuario: { select: { id: true, nome: true } },
-    },
-    orderBy: { dataUpload: 'desc' },
-  })
-
-  if (session.user.papelSistema !== 'ADMIN') {
-    const masked = documentos.map(d => ({
-      ...d,
-      usuario: d.usuario ? { ...d.usuario, nome: maskName(d.usuario.nome) } : d.usuario,
-    }))
-    return NextResponse.json(masked)
-  }
-
-  return NextResponse.json(documentos)
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-
-  if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
-  }
-
-  const { id } = await params
-
-  const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
-  if (!hasAccess) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
-  }
-
-  const projeto = await prisma.projeto.findUnique({ where: { id } })
-  if (!projeto) {
-    return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
-  }
-
-  let formData: FormData
   try {
-    formData = await request.formData()
-  } catch {
-    return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
-  }
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-  const file = formData.get('file') as File | null
+    if (session.user.papelSistema !== 'ADMIN') {
+      return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+    }
 
-  if (!file || file.size === 0) {
-    return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
-  }
+    const { id } = await params
 
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: 'Arquivo muito grande. Máximo: 10MB' }, { status: 400 })
-  }
+    const hasAccess = await checkProjectAccess(id, session.user.id, session.user.papelSistema)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-  if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return NextResponse.json({
-      error: `Extensão não permitida. Permitidas: ${ALLOWED_EXTENSIONS.join(', ')}`,
-    }, { status: 400 })
-  }
+    const projeto = await prisma.projeto.findUnique({ where: { id } })
+    if (!projeto) {
+      return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
+    }
 
-  try {
+    let formData: FormData
+    try {
+      formData = await request.formData()
+    } catch {
+      return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
+    }
+
+    const file = formData.get('file') as File | null
+
+    if (!file || file.size === 0) {
+      return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 })
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'Arquivo muito grande. Máximo: 10MB' }, { status: 400 })
+    }
+
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return NextResponse.json({
+        error: `Extensão não permitida. Permitidas: ${ALLOWED_EXTENSIONS.join(', ')}`,
+      }, { status: 400 })
+    }
+
     const bytes = await file.arrayBuffer()
     const base64 = Buffer.from(bytes).toString('base64')
 
@@ -124,6 +129,7 @@ export async function POST(
       usuario: { id: session.user.id, nome: session.user.papelSistema !== 'ADMIN' ? maskName(session.user.nome) : session.user.nome },
     }, { status: 201 })
   } catch (err) {
+    console.error('Erro ao salvar documento:', err)
     return NextResponse.json({ error: `Erro ao salvar arquivo: ${(err as Error).message}` }, { status: 500 })
   }
 }

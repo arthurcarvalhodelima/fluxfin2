@@ -28,103 +28,108 @@ const createProjectSchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-  const { searchParams } = new URL(request.url)
-  const page = parseInt(searchParams.get('page') ?? '1')
-  const limit = parseInt(searchParams.get('limit') ?? '20')
-  const status = searchParams.get('status')
-  const search = searchParams.get('search')
-  const skip = (page - 1) * limit
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') ?? '1')
+    const limit = parseInt(searchParams.get('limit') ?? '20')
+    const status = searchParams.get('status')
+    const search = searchParams.get('search')
+    const skip = (page - 1) * limit
 
-  const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
-  const where: Record<string, unknown> = { deletedAt: null }
+    const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
+    const where: Record<string, unknown> = { deletedAt: null }
 
-  if (userProjectIds !== null) {
-    where.id = { in: userProjectIds }
-  }
+    if (userProjectIds !== null) {
+      where.id = { in: userProjectIds }
+    }
 
-  if (status) {
-    where.status = status
-  }
+    if (status) {
+      where.status = status
+    }
 
-  if (search) {
-    where.OR = [
-      { titulo: { contains: search, mode: 'insensitive' } },
-      { codigo: { contains: search, mode: 'insensitive' } },
-    ]
-  }
+    if (search) {
+      where.OR = [
+        { titulo: { contains: search, mode: 'insensitive' } },
+        { codigo: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
-  const [projetos, total] = await Promise.all([
-    prisma.projeto.findMany({
-      where,
-      include: {
-        equipeProjeto: {
-          select: { papel: true, usuario: { select: { id: true, nome: true } } },
+    const [projetos, total] = await Promise.all([
+      prisma.projeto.findMany({
+        where,
+        include: {
+          equipeProjeto: {
+            select: { papel: true, usuario: { select: { id: true, nome: true } } },
+          },
+          _count: { select: { despesas: true, documentosProjeto: true } },
         },
-        _count: { select: { despesas: true, documentosProjeto: true } },
-      },
-      skip,
-      take: limit,
-      orderBy: { criadoEm: 'desc' },
-    }),
-    prisma.projeto.count({ where }),
-  ])
+        skip,
+        take: limit,
+        orderBy: { criadoEm: 'desc' },
+      }),
+      prisma.projeto.count({ where }),
+    ])
 
-  if (session.user.papelSistema !== 'ADMIN') {
-    const masked = projetos.map(p => ({
-      ...p,
-      equipeProjeto: p.equipeProjeto.map(e => ({
-        ...e,
-        usuario: { ...e.usuario, nome: maskName(e.usuario.nome) },
-      })),
-    }))
-    return NextResponse.json({ projetos: masked, total, page, limit })
+    if (session.user.papelSistema !== 'ADMIN') {
+      const masked = projetos.map(p => ({
+        ...p,
+        equipeProjeto: p.equipeProjeto.map(e => ({
+          ...e,
+          usuario: { ...e.usuario, nome: maskName(e.usuario.nome) },
+        })),
+      }))
+      return NextResponse.json({ projetos: masked, total, page, limit })
+    }
+
+    return NextResponse.json({ projetos, total, page, limit })
+  } catch (error) {
+    console.error('Erro ao buscar projetos:', error)
+    return NextResponse.json({ error: 'Erro ao buscar projetos' }, { status: 500 })
   }
-
-  return NextResponse.json({ projetos, total, page, limit })
 }
 
 export async function POST(request: NextRequest) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  }
-
-  if (session.user.papelSistema !== 'ADMIN') {
-    return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
-  }
-
-  const body = await request.json()
-  const parsed = createProjectSchema.safeParse(body)
-
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
-  }
-
-  const { codigo, titulo, descricao, dataInicio, dataTermino, orcamentoGlobal, equipe, rubricas } = parsed.data
-
-  const existingCode = await prisma.projeto.findUnique({ where: { codigo } })
-  if (existingCode) {
-    return NextResponse.json({ error: 'Código do projeto já existe' }, { status: 409 })
-  }
-
-  const hasCoordenador = equipe.some(m => m.papel === 'COORDENADOR')
-  if (!hasCoordenador) {
-    return NextResponse.json({ error: 'Equipe deve ter pelo menos um COORDENADOR' }, { status: 400 })
-  }
-
-  if (rubricas && rubricas.length > 0) {
-    const totalRubricas = rubricas.reduce((sum, r) => sum + r.valorAlocado, 0)
-    if (totalRubricas > orcamentoGlobal) {
-      return NextResponse.json({ error: 'Total das rubricas excede o orçamento global' }, { status: 400 })
-    }
-  }
-
   try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
+
+    if (session.user.papelSistema !== 'ADMIN') {
+      return NextResponse.json({ error: 'Apenas administradores podem alterar dados' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const parsed = createProjectSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 })
+    }
+
+    const { codigo, titulo, descricao, dataInicio, dataTermino, orcamentoGlobal, equipe, rubricas } = parsed.data
+
+    const existingCode = await prisma.projeto.findUnique({ where: { codigo } })
+    if (existingCode) {
+      return NextResponse.json({ error: 'Código do projeto já existe' }, { status: 409 })
+    }
+
+    const hasCoordenador = equipe.some(m => m.papel === 'COORDENADOR')
+    if (!hasCoordenador) {
+      return NextResponse.json({ error: 'Equipe deve ter pelo menos um COORDENADOR' }, { status: 400 })
+    }
+
+    if (rubricas && rubricas.length > 0) {
+      const totalRubricas = rubricas.reduce((sum, r) => sum + r.valorAlocado, 0)
+      if (totalRubricas > orcamentoGlobal) {
+        return NextResponse.json({ error: 'Total das rubricas excede o orçamento global' }, { status: 400 })
+      }
+    }
+
     const projeto = await prisma.$transaction(async (tx) => {
       const proj = await tx.projeto.create({
         data: {
@@ -170,10 +175,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(projeto, { status: 201 })
   } catch (error) {
-    console.error('Error creating project:', error)
-    return NextResponse.json(
-      { error: 'Erro ao criar projeto' },
-      { status: 500 }
-    )
+    console.error('Erro ao criar projeto:', error)
+    return NextResponse.json({ error: 'Erro ao criar projeto' }, { status: 500 })
   }
 }
