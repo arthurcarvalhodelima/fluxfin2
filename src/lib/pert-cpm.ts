@@ -23,7 +23,7 @@ export async function calcularCaminhoCritico(projetoId: string): Promise<CPMResu
   }
 
   const milestones = await prisma.milestone.findMany({
-    where: { projetoId },
+    where: { projetoId, deletedAt: null },
     orderBy: { dataPrevista: 'asc' },
     include: {
       predecessorDe: { select: { id: true } },

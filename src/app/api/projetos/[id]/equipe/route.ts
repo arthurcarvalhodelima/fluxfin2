@@ -33,7 +33,7 @@ export async function GET(
   }
 
   const equipe = await prisma.equipeProjeto.findMany({
-    where: { projetoId: id },
+    where: { projetoId: id, deletedAt: null },
     include: {
       usuario: { select: { id: true, nome: true, email: true } },
     },
@@ -103,7 +103,7 @@ export async function POST(
       },
     })
 
-    const allMembers = await tx.equipeProjeto.findMany({ where: { projetoId: id } })
+    const allMembers = await tx.equipeProjeto.findMany({ where: { projetoId: id, deletedAt: null } })
     const hasCoordenador = allMembers.some(m => m.papel === 'COORDENADOR')
 
     if (!hasCoordenador) {
@@ -163,13 +163,14 @@ export async function DELETE(
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.equipeProjeto.delete({
+    await tx.equipeProjeto.update({
       where: { id: existing.id },
+      data: { deletedAt: new Date() },
     })
 
     if (existing.papel === 'COORDENADOR') {
       const remaining = await tx.equipeProjeto.findMany({
-        where: { projetoId: id },
+        where: { projetoId: id, deletedAt: null },
       })
       const hasCoordenador = remaining.some(m => m.papel === 'COORDENADOR')
       if (!hasCoordenador) {

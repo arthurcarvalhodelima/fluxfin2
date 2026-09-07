@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function recalcularProgresso(projetoId: string): Promise<void> {
   const milestones = await prisma.milestone.findMany({
-    where: { projetoId },
+    where: { projetoId, deletedAt: null },
   })
   if (milestones.length === 0) return
   const newProgress = milestones

@@ -38,7 +38,7 @@ export async function GET(
   }
 
   const rubricas = await prisma.rubrica.findMany({
-    where: { projetoId: id },
+    where: { projetoId: id, deletedAt: null },
     select: {
       id: true,
       nome: true,
@@ -99,7 +99,7 @@ export async function POST(
     return NextResponse.json({ error: 'Já existe uma rubrica para esta categoria' }, { status: 409 })
   }
 
-  const allRubricas = await prisma.rubrica.findMany({ where: { projetoId: id } })
+  const allRubricas = await prisma.rubrica.findMany({ where: { projetoId: id, deletedAt: null } })
   const totalAlocado = allRubricas.reduce((sum, r) => sum + Number(r.valorAlocado), 0)
   if (totalAlocado + parsed.data.valorAlocado > Number(projeto.orcamentoGlobal)) {
     return NextResponse.json({

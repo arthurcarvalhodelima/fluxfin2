@@ -8,7 +8,7 @@ import ProjectGanttChart from "@/components/ProjectGanttChart";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Modal from "@/components/Modal";
 import ExpenseForm from "@/components/ExpenseForm";
-import { calculateCPI, calculateSPI, calculateEAC, calculateETC, calculateVAC } from "@/lib/evm";
+import { calculateCPI, calculateSPI, calculateEAC, calculateETC, calculateVAC, calculateTCPI } from "@/lib/evm";
 
 function formatDate(date: string | null | undefined): string {
   if (!date) return "-";
@@ -611,7 +611,8 @@ export default function ProjetoDetailPage() {
     const eac = calculateEAC(BAC, cpi);
     const etc = calculateETC(BAC, EV, cpi);
     const vac = calculateVAC(BAC, eac);
-    return { PV, EV, AC, BAC, cpi, spi, eac, etc, vac };
+    const tcpi = calculateTCPI(BAC, EV, AC);
+    return { PV, EV, AC, BAC, cpi, spi, eac, etc, vac, tcpi };
   }, [projeto, totalGasto]);
 
   if (loading) {
@@ -798,6 +799,12 @@ export default function ProjetoDetailPage() {
                     value: new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(evmMetrics.vac),
                     color: evmMetrics.vac >= 0 ? "text-green-600" : "text-red-600",
                     desc: "Variação (VAC)",
+                  },
+                  {
+                    label: "TCPI",
+                    value: evmMetrics.tcpi.toFixed(2),
+                    color: evmMetrics.tcpi <= 1 ? "text-green-600" : "text-red-600",
+                    desc: "Para Concluir (TCPI)",
                   },
                 ].map((card) => (
                   <div key={card.label} className="p-4 rounded-lg bg-surface-hover">

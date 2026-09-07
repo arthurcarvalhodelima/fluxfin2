@@ -25,7 +25,7 @@ export async function GET(
   }
 
   const documentos = await prisma.documentoProjeto.findMany({
-    where: { projetoId: id },
+    where: { projetoId: id, deletedAt: null },
     include: {
       usuario: { select: { id: true, nome: true } },
     },

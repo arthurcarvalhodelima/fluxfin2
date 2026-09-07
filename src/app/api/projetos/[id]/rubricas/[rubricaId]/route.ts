@@ -32,7 +32,7 @@ export async function GET(
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
-  const rubrica = await prisma.rubrica.findFirst({ where: { id: rubricaId, projetoId: id } })
+  const rubrica = await prisma.rubrica.findFirst({ where: { id: rubricaId, projetoId: id, deletedAt: null } })
   if (!rubrica) {
     return NextResponse.json({ error: 'Rubrica não encontrada' }, { status: 404 })
   }
@@ -146,7 +146,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Não é possível excluir rubrica com despesas vinculadas' }, { status: 400 })
   }
 
-  await prisma.rubrica.delete({ where: { id: rubricaId } })
+  await prisma.rubrica.update({
+    where: { id: rubricaId },
+    data: { deletedAt: new Date() },
+  })
 
   await createAuditLog({
     userId: session.user.id,

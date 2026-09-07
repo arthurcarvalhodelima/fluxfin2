@@ -39,7 +39,7 @@ export async function GET(
   }
 
   const milestones = await prisma.milestone.findMany({
-    where: { projetoId: id },
+    where: { projetoId: id, deletedAt: null },
     orderBy: { dataPrevista: 'asc' },
     include: {
       _count: { select: { despesas: true } },

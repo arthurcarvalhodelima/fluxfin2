@@ -132,7 +132,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Milestone não encontrada' }, { status: 404 })
   }
 
-  await prisma.milestone.delete({ where: { id: milestoneId } })
+  await prisma.milestone.update({
+    where: { id: milestoneId },
+    data: { deletedAt: new Date() },
+  })
   await recalcularProgresso(id)
 
   await createAuditLog({

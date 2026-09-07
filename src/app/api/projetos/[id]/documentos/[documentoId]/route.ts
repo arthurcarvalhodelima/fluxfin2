@@ -31,7 +31,10 @@ export async function DELETE(
     return NextResponse.json({ error: 'Documento não encontrado' }, { status: 404 })
   }
 
-  await prisma.documentoProjeto.delete({ where: { id: documentoId } })
+  await prisma.documentoProjeto.update({
+    where: { id: documentoId },
+    data: { deletedAt: new Date() },
+  })
 
   await createAuditLog({
     userId: session.user.id,

@@ -76,6 +76,7 @@ model EquipeProjeto {
   projetoId   String        @db.Uuid
   usuarioId   String        @db.Uuid
   papel       PapelUsuario
+  deletedAt   DateTime?
   criadoEm    DateTime      @default(now())
 
   projeto     Projeto       @relation(fields: [projetoId], references: [id], onDelete: Cascade)
@@ -93,6 +94,7 @@ model Rubrica {
   categoria       String
   valorAlocado    Decimal  @db.Decimal(15, 2)
   valorGasto      Decimal  @default(0) @db.Decimal(15, 2)
+  deletedAt       DateTime?
   criadoEm        DateTime @default(now())
   atualizadoEm    DateTime @updatedAt
 
@@ -137,6 +139,7 @@ model DocumentoProjeto {
   nomeArquivo     String
   extensao        String
   urlArmazenamento String   @db.Text
+  deletedAt       DateTime?
   dataUpload      DateTime @default(now())
 
   projeto         Projeto  @relation(fields: [projetoId], references: [id], onDelete: Cascade)
@@ -153,6 +156,7 @@ model Milestone {
   dataPrevista    DateTime
   dataExecucao    DateTime?
   percentualPrevisto Decimal @db.Decimal(5, 2)
+  deletedAt       DateTime?
   criadoEm        DateTime @default(now())
   atualizadoEm    DateTime @updatedAt
 
