@@ -90,6 +90,7 @@ export default function ProjetosPage() {
   useEffect(() => {
     const params = new URLSearchParams();
     if (statusFilter) params.set("status", statusFilter);
+    params.set("limit", "1000");
 
     fetch(`/api/projetos?${params}`)
       .then((res) => res.json())
