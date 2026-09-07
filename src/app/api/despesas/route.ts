@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
 
-  const where: any = {}
+  const where: any = { deletedAt: null }
 
   if (userProjectIds.length > 0) {
     where.projetoId = { in: userProjectIds }

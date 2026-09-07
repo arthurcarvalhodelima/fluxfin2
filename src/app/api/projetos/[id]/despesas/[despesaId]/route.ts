@@ -42,7 +42,7 @@ export async function PATCH(
   }
 
   const existing = await prisma.despesa.findFirst({
-    where: { id: despesaId, projetoId: id },
+    where: { id: despesaId, projetoId: id, deletedAt: null },
   })
   if (!existing) {
     return NextResponse.json({ error: 'Despesa não encontrada' }, { status: 404 })

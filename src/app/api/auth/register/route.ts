@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { createAuditLog } from '@/lib/audit'
 import { z } from 'zod'
 
 const registerSchema = z.object({
@@ -54,6 +55,14 @@ export async function POST(request: NextRequest) {
       senha: hashedPassword,
       papelSistema,
     },
+  })
+
+  await createAuditLog({
+    userId: session.user.id,
+    entity: 'Usuario',
+    entityId: user.id,
+    action: 'CRIAR',
+    newData: { nome, email, papelSistema },
   })
 
   return NextResponse.json(

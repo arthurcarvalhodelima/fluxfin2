@@ -37,6 +37,7 @@ export async function GET() {
     }),
     prisma.despesa.findMany({
       where: {
+        deletedAt: null,
         status: { in: ['APROVADA', 'PAGA'] },
         ...(userProjectIds.length > 0 ? { projetoId: { in: userProjectIds } } : {}),
       },

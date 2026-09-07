@@ -117,6 +117,7 @@ model Despesa {
   status          StatusDespesa @default(PENDENTE)
   justificativa   String?
   dataAprovacao   DateTime?
+  deletedAt       DateTime?
   criadoEm        DateTime     @default(now())
   atualizadoEm    DateTime     @updatedAt
 

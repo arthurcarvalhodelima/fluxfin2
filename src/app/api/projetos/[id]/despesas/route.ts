@@ -34,7 +34,7 @@ export async function GET(
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
 
-  const where: Record<string, unknown> = { projetoId: id }
+  const where: Record<string, unknown> = { projetoId: id, deletedAt: null }
   if (status) {
     where.status = status
   }
