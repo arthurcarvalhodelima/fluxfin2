@@ -222,7 +222,12 @@ export default function RelatorioPreview({ isOpen, onClose, data }: RelatorioPre
     const url = URL.createObjectURL(blob);
     const printWindow = window.open(url);
     if (printWindow) {
-      printWindow.onload = () => { printWindow.print(); };
+      printWindow.onload = () => {
+        printWindow.print();
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -236,7 +241,6 @@ export default function RelatorioPreview({ isOpen, onClose, data }: RelatorioPre
       isOpen={isOpen}
       onClose={onClose}
       title="Pré-visualização do Relatório"
-      size="xl"
       footer={
         <>
           <button onClick={handleDownload} className="fluxfin-btn-primary">

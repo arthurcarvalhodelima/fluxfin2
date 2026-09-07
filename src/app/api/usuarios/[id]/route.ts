@@ -26,6 +26,10 @@ export async function GET(
 
     const { id } = await params
 
+    if (session.user.papelSistema !== 'ADMIN' && session.user.id !== id) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+
     const usuario = await prisma.usuario.findFirst({
       where: { id, deletedAt: null },
       select: {
@@ -93,6 +97,13 @@ export async function PUT(
       data.senha = await bcrypt.hash(data.senha as string, 12)
     }
 
+    if (existing.papelSistema === 'ADMIN' && data.papelSistema === 'USUARIO') {
+      const adminCount = await prisma.usuario.count({ where: { papelSistema: 'ADMIN', deletedAt: null } })
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: 'Não é possível remover o último administrador' }, { status: 400 })
+      }
+    }
+
     if (data.email && data.email !== existing.email) {
       const emailExists = await prisma.usuario.findUnique({ where: { email: data.email as string } })
       if (emailExists) {
@@ -143,6 +154,17 @@ export async function DELETE(
     const existing = await prisma.usuario.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 })
+    }
+
+    if (session.user.id === id) {
+      return NextResponse.json({ error: 'Não é possível excluir seu próprio usuário' }, { status: 400 })
+    }
+
+    if (existing.papelSistema === 'ADMIN') {
+      const adminCount = await prisma.usuario.count({ where: { papelSistema: 'ADMIN', deletedAt: null } })
+      if (adminCount <= 1) {
+        return NextResponse.json({ error: 'Não é possível excluir o último administrador' }, { status: 400 })
+      }
     }
 
     const usuario = await prisma.usuario.update({

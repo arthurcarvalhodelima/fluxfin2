@@ -30,7 +30,6 @@ export default function ConfirmDialog({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      size="sm"
       footer={
         <>
           <button

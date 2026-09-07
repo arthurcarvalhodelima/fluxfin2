@@ -98,7 +98,8 @@ export async function POST(request: NextRequest) {
     }
     const timelineDespesas = Object.entries(despesasPorMes).map(([mes, valor]) => ({ mes, valor }))
 
-    const cpi = totalGasto > 0 ? orcamentoTotal / totalGasto : 0
+    const ev = (Number(projeto.progressoFisico) / 100) * orcamentoTotal
+    const cpi = totalGasto > 0 ? ev / totalGasto : 0
 
     const reportData: Record<string, unknown> = {
       geradoEm: new Date().toISOString(),

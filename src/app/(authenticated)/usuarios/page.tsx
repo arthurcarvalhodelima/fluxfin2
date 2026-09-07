@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import DataTable, { Column } from "@/components/DataTable";
 import Badge from "@/components/Badge";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import UsuarioFormModal from "@/components/UsuarioFormModal";
 
 interface Usuario {
   id: string;
@@ -23,7 +23,6 @@ type ConfirmAction = {
 };
 
 export default function UsuariosPage() {
-  const router = useRouter();
   const { data: session } = useSession();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,12 +31,14 @@ export default function UsuariosPage() {
     action: ConfirmAction | null;
   }>({ isOpen: false, action: null });
   const [processing, setProcessing] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<Usuario | null>(null);
 
   const isAdmin = session?.user?.papelSistema === "ADMIN";
 
   const fetchUsuarios = () => {
     fetch("/api/usuarios")
-      .then((res) => res.json())
+      .then((res) => res.ok ? res.json() : { usuarios: [] })
       .then((json) => {
         setUsuarios(json.usuarios || []);
         setLoading(false);
@@ -87,6 +88,16 @@ export default function UsuariosPage() {
     }
   };
 
+  function openCreateModal() {
+    setEditingUser(null);
+    setShowUserModal(true);
+  }
+
+  function openEditModal(usuario: Usuario) {
+    setEditingUser(usuario);
+    setShowUserModal(true);
+  }
+
   const confirm = confirmDialog.action;
   const isToggle = confirm?.type === "toggle";
   const toggleUser = isToggle ? confirm?.usuario : null;
@@ -133,10 +144,7 @@ export default function UsuariosPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">Usuários</h1>
         {isAdmin && (
-          <button
-            onClick={() => router.push("/usuarios/novo")}
-            className="fluxfin-btn-primary"
-          >
+          <button onClick={openCreateModal} className="fluxfin-btn-primary">
             Novo Usuário
           </button>
         )}
@@ -153,7 +161,7 @@ export default function UsuariosPage() {
                 return (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => router.push(`/usuarios/editar/${item.id}`)}
+                      onClick={() => openEditModal(item)}
                       className="text-sm px-3 py-1.5 rounded-lg text-foreground hover:bg-surface-hover transition-colors"
                     >
                       Editar
@@ -220,6 +228,13 @@ export default function UsuariosPage() {
         }
         variant={isToggle ? (toggleUser?.ativo ? "danger" : "warning") : "danger"}
         loading={processing}
+      />
+
+      <UsuarioFormModal
+        isOpen={showUserModal}
+        onClose={() => { setShowUserModal(false); setEditingUser(null); }}
+        onSuccess={fetchUsuarios}
+        editingUser={editingUser}
       />
     </div>
   );

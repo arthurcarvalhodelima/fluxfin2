@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface GanttProject {
   id: string;
@@ -67,9 +67,16 @@ function generateMonths(start: Date, end: Date): Date[] {
 }
 
 export default function GanttChart({ projects }: GanttChartProps) {
+  const [statusFilter, setStatusFilter] = useState("");
+
+  const filteredProjects = useMemo(
+    () => statusFilter ? projects.filter((p) => p.status === statusFilter) : projects,
+    [projects, statusFilter]
+  );
+
   const { start: timelineStart, end: timelineEnd } = useMemo(
-    () => getTimelineRange(projects),
-    [projects]
+    () => getTimelineRange(filteredProjects),
+    [filteredProjects]
   );
 
   const months = useMemo(
@@ -82,7 +89,7 @@ export default function GanttChart({ projects }: GanttChartProps) {
     return Math.max(diff / (1000 * 60 * 60 * 24), 1);
   }, [timelineStart, timelineEnd]);
 
-  if (projects.length === 0) {
+  if (filteredProjects.length === 0) {
     return (
       <div className="fluxfin-card text-center py-12">
         <p className="text-muted">Nenhum projeto para exibir no diagrama de Gantt.</p>
@@ -96,15 +103,27 @@ export default function GanttChart({ projects }: GanttChartProps) {
         <h2 className="text-lg font-semibold text-foreground">
           Diagrama de Gantt
         </h2>
-        <div className="flex items-center gap-3 text-xs">
-          {Object.entries(statusLabels).map(([key, label]) => (
-            <span key={key} className="flex items-center gap-1.5">
-              <span
-                className={`w-3 h-3 rounded-sm ${statusColors[key]?.bar ?? "bg-muted"}`}
-              />
-              <span className="text-muted">{label}</span>
-            </span>
-          ))}
+        <div className="flex items-center gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="fluxfin-input w-auto text-sm"
+          >
+            <option value="">Todos os status</option>
+            {Object.entries(statusLabels).map(([key, label]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-3 text-xs">
+            {Object.entries(statusLabels).map(([key, label]) => (
+              <span key={key} className="flex items-center gap-1.5">
+                <span
+                  className={`w-3 h-3 rounded-sm ${statusColors[key]?.bar ?? "bg-muted"}`}
+                />
+                <span className="text-muted">{label}</span>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -126,7 +145,7 @@ export default function GanttChart({ projects }: GanttChartProps) {
             </div>
           </div>
 
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const projStart = new Date(project.dataInicio);
             const projEnd = new Date(project.dataTermino);
 

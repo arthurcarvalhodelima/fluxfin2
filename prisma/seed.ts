@@ -3,172 +3,111 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// ─── Dados auxiliares ─────────────────────────────────────────────────────────
+
 const PREFIXOS = [
-  'Desenvolvimento de', 'Estudo de', 'Análise de', 'Implementação de',
-  'Projeto de', 'Pesquisa sobre', 'Avaliação de', 'Monitoramento de',
-  'Planejamento de', 'Otimização de', 'Gestão de', 'Controle de',
-  'Modelagem de', 'Simulação de', 'Síntese de', 'Identificação de',
+  'Desenvolvimento de', 'Estudo de', 'Analise de', 'Implementacao de',
+  'Projeto de', 'Pesquisa sobre', 'Avaliacao de', 'Monitoramento de',
+  'Planejamento de', 'Otimizacao de', 'Gestao de', 'Controle de',
+  'Modelagem de', 'Simulacao de', 'Sintese de', 'Identificacao de',
+  'Integracao de', 'Modernizacao de', 'Diagnostico de', 'Automacao de',
 ];
 
 const SUFIXOS = [
-  'Sistemas de Energia Renovável', 'Redes de Distribuição Elétrica',
-  'Eficiência Energética', 'Qualidade de Energia', 'Automação Industrial',
+  'Sistemas de Energia Renovavel', 'Redes de Distribuicao Eletrica',
+  'Eficiencia Energetica', 'Qualidade de Energia', 'Automacao Industrial',
   'Sistemas Fotovoltaicos', 'Armazenamento de Energia', 'Smart Grids',
-  'Veículos Elétricos', 'Microredes', 'Eletrônica de Potência',
-  'Máquinas Elétricas', 'Eletrificação Rural', 'Termoelectricidade',
-  'Eólica Offshore', 'Hidrelétricas de Pequeno Porte',
+  'Veiculos Eletricos', 'Microredes', 'Eletronica de Potencia',
+  'Maquinas Eletricas', 'Eletrificacao Rural', 'Termoeletricidade',
+  'Eolica Offshore', 'Hidreletricas de Pequeno Porte', 'Redes Inteligentes',
+  'Gestao de Demanda', 'Subestacoes Digitais', 'Protecao de Sistemas Eletricos',
 ];
 
 const DESCRICOES_PROJETO = [
-  'Projeto de P&D voltado para modernização da infraestrutura elétrica, incluindo estudos de viabilidade técnica e econômica, desenvolvimento de protótipos e validação em campo.',
-  'Pesquisa aplicada em parceria com universidades federais, focada em soluções inovadoras para o setor elétrico com impacto na qualidade do serviço prestado aos consumidores.',
-  'Estudo técnico detalhado para implantação de novas tecnologias na rede de distribuição, contemplando análise de risco, planejamento financeiro e cronograma de execução.',
-  'Desenvolvimento de sistema inteligente de monitoramento e controle de rede, utilizing algoritmos de machine learning para previsão de falhas e otimização operacional.',
-  'Projeto de eficiência energética em sistemas de distribuição, incluindo auditorias técnicas, substituição de equipamentos obsoletos e implantação de indicadores de desempenho.',
-  'Implementação de solução de automação para subestações de distribuição, com foco em redução de perdas técnicas e melhoria da confiabilidade do suprimento.',
-  'Estudo de viabilidade para implantação de geração distribuída em áreas rurais, incluindo análise de potencial solar e eólico e interligação com a rede existente.',
-  'Pesquisa e desenvolvimento de sistema de armazenamento de energia para aplicação em redes de distribuição, visando suporte a picos de demanda e integração de fontes renováveis.',
+  'Projeto de P&D voltado para modernizacao da infraestrutura eletrica.',
+  'Pesquisa aplicada em parceria com universidades federais para o setor eletrico.',
+  'Estudo tecnico para implantacao de novas tecnologias na rede de distribuicao.',
+  'Desenvolvimento de sistema inteligente de monitoramento e controle de rede.',
+  'Projeto de eficiencia energetica em sistemas de distribuicao.',
+  'Implementacao de solucao de automacao para subestacoes de distribuicao.',
+  'Estudo de viabilidade para implantacao de geracao distribuida em areas rurais.',
+  'Pesquisa de sistema de armazenamento de energia para redes de distribuicao.',
+  'Plataforma de gestao energetica com foco na reducao de perdas comerciais.',
+  'Monitoramento em tempo real de ativos da rede usando sensores IoT.',
 ];
 
-const RUBRICAS_POR_CATEGORIA: Record<string, { nomes: string[]; percentual: number }> = {
-  RECURSOS_HUMANOS: {
-    nomes: [
-      'Bolsas de Pesquisa',
-      'Remuneração de Equipe Técnica',
-      'Encargos Sociais e Trabalhistas',
-      'Treimamento e Capacitação',
-      'Diárias de Pesquisadores',
-      'Estágios e Iniciação Científica',
-      'Consultoria Especializada em RH',
-    ],
-    percentual: 40,
-  },
-  SERVICOS_TERCEIROS: {
-    nomes: [
-      'Subcontratação de Análises Laboratoriais',
-      'Serviços de Consultoria Técnica Externa',
-      'Manutenção de Software Especializado',
-      'Serviços de Processamento de Dados',
-      'Auditoria e Certificação Técnica',
-      'Serviços de Campo e Coleta de Dados',
-      'Suporte de Infraestrutura Terceirizada',
-    ],
-    percentual: 20,
-  },
-  MATERIAIS_CONSUMO: {
-    nomes: [
-      'Insumos para Laboratório',
-      'Material Elétrico e Eletrônico',
-      'Combustível e Lubrificantes',
-      'Material de Escritório e Papelaria',
-      'Componentes para Prototipagem',
-      'Reagentes e Produtos Químicos',
-      'Material de Proteção Individual',
-    ],
-    percentual: 10,
-  },
-  MATERIAIS_PERMANENTES: {
-    nomes: [
-      'Equipamentos de Medição e Ensaios',
-      'Computadores e Periféricos',
-      'Instrumentação Científica',
-      'Móveis e Utensílios para Laboratório',
-      'Servidores e Equipamentos de Rede',
-      'Veículos para Apoio ao Projeto',
-      'Módulos Fotovoltaicos e Conversores',
-    ],
-    percentual: 15,
-  },
-  VIAGENS_DIARIAS: {
-    nomes: [
-      'Deslocamento para Visita Técnica',
-      'Participação em Eventos e Congressos',
-      'Diárias para Trabalho de Campo',
-      'Passagens Aéreas para Reuniões',
-      'Hospedagem em Eventos Técnicos',
-      'Transporte Local em Operações',
-    ],
-    percentual: 5,
-  },
-  CUSTOS_ADMINISTRATIVOS: {
-    nomes: [
-      'Infraestrutura e Energia do Laboratório',
-      'Aluguel de Espaço Operacional',
-      'Licenças de Software e Sistemas',
-      'Seguro de Equipamentos e Projetos',
-      'Despesas Bancárias e Financeiras',
-      'Publicações e Relatórios Técnicos',
-    ],
-    percentual: 10,
-  },
-};
+// Rubricas ANEEL com percentuais base (soma = 100%)
+const RUBRICAS_ANEEL = [
+  { nome: 'Recursos Humanos', categoria: 'RECURSOS_HUMANOS', percentualBase: 40 },
+  { nome: 'Servicos de Terceiros', categoria: 'SERVICOS_TERCEIROS', percentualBase: 20 },
+  { nome: 'Materiais de Consumo', categoria: 'MATERIAIS_CONSUMO', percentualBase: 10 },
+  { nome: 'Materiais Permanentes', categoria: 'MATERIAIS_PERMANENTES', percentualBase: 15 },
+  { nome: 'Viagens e Diarias', categoria: 'VIAGENS_DIARIAS', percentualBase: 5 },
+  { nome: 'Custos Administrativos', categoria: 'CUSTOS_ADMINISTRATIVOS', percentualBase: 10 },
+];
 
 const MILESTONE_POOL = [
   { nome: 'Kickoff e Alinhamento Inicial', fase: 'inicio', percentual: 5 },
   { nome: 'Levantamento de Requisitos', fase: 'inicio', percentual: 10 },
-  { nome: 'Diagnóstico da Situação Atual', fase: 'inicio', percentual: 8 },
-  { nome: 'Estudo de Viabilidade Técnica', fase: 'planejamento', percentual: 15 },
+  { nome: 'Diagnostico da Situacao Atual', fase: 'inicio', percentual: 8 },
+  { nome: 'Estudo de Viabilidade Tecnica', fase: 'planejamento', percentual: 15 },
   { nome: 'Planejamento Detalhado do Projeto', fase: 'planejamento', percentual: 12 },
-  { nome: 'Definição da Arquitetura de Solução', fase: 'planejamento', percentual: 10 },
-  { nome: 'Aprovação do Projeto Básico', fase: 'planejamento', percentual: 8 },
-  { nome: 'Aquisição de Materiais e Equipamentos', fase: 'execucao', percentual: 10 },
-  { nome: 'Desenvolvimento do Protótipo', fase: 'execucao', percentual: 15 },
-  { nome: 'Implementação em Escala Piloto', fase: 'execucao', percentual: 12 },
-  { nome: 'Integração com Sistemas Existentes', fase: 'execucao', percentual: 10 },
-  { nome: 'Testes de Aceitação', fase: 'validacao', percentual: 8 },
+  { nome: 'Definicao da Arquitetura de Solucao', fase: 'planejamento', percentual: 10 },
+  { nome: 'Aprovacao do Projeto Basico', fase: 'planejamento', percentual: 8 },
+  { nome: 'Aquisicao de Materiais e Equipamentos', fase: 'execucao', percentual: 10 },
+  { nome: 'Desenvolvimento do Prototipo', fase: 'execucao', percentual: 15 },
+  { nome: 'Implementacao em Escala Piloto', fase: 'execucao', percentual: 12 },
+  { nome: 'Integracao com Sistemas Existentes', fase: 'execucao', percentual: 10 },
+  { nome: 'Testes de Aceitacao', fase: 'validacao', percentual: 8 },
   { nome: 'Treinamento da Equipe Operacional', fase: 'validacao', percentual: 5 },
-  { nome: 'Relatório Técnico Parcial', fase: 'validacao', percentual: 7 },
-  { nome: 'Validação em Condições Reais', fase: 'validacao', percentual: 10 },
-  { nome: 'Entrega do Relatório Final', fase: 'encerramento', percentual: 5 },
-  { nome: 'Revisão e Aprovação pela ANEEL', fase: 'encerramento', percentual: 5 },
-  { nome: 'Encerramento e Transição', fase: 'encerramento', percentual: 3 },
+  { nome: 'Relatorio Tecnico Parcial', fase: 'validacao', percentual: 7 },
+  { nome: 'Validacao em Condicoes Reais', fase: 'validacao', percentual: 10 },
+  { nome: 'Entrega do Relatorio Final', fase: 'encerramento', percentual: 5 },
+  { nome: 'Revisao e Aprovacao pela ANEEL', fase: 'encerramento', percentual: 5 },
+  { nome: 'Encerramento e Transicao', fase: 'encerramento', percentual: 3 },
 ];
 
-const DESCRICOES_DESPESA = {
+const DESCRICOES_DESPESA: Record<string, string[]> = {
   RECURSOS_HUMANOS: [
-    'Pagamento de bolsa de pesquisa - mês {mes}',
-    'Remuneração de técnico de laboratório',
+    'Pagamento de bolsa de pesquisa',
+    'Remuneracao de tecnico de laboratorio',
     'Horas extras da equipe de desenvolvimento',
-    'Consultoria especializada em engenharia elétrica',
-    'Estagiário de apoio ao projeto',
+    'Consultoria especializada em engenharia eletrica',
+    'Estagiario de apoio ao projeto',
   ],
   SERVICOS_TERCEIROS: [
-    'Serviços de análise laboratorial de materiais',
-    'Contratação de empresa de auditoria técnica',
-    'Serviços de medição e calibração de equipamentos',
-    'Consultoria jurídica para regularização',
-    'Serviços detopografia e levantamento georreferenciado',
-    'Manutenção preventiva de equipamentos de campo',
+    'Servicos de analise laboratorial de materiais',
+    'Contratacao de empresa de auditoria tecnica',
+    'Servicos de medicao e calibracao de equipamentos',
+    'Manutencao preventiva de equipamentos de campo',
   ],
   MATERIAIS_CONSUMO: [
-    'Materiais elétricos para protótipo',
-    'Componentes eletrônicos para desenvolvimento',
-    'Material de escritório e consumíveis',
+    'Materiais eletricos para prototipo',
+    'Componentes eletronicos para desenvolvimento',
+    'Material de escritorio e consumiveis',
     'Insumos para testes laboratoriais',
-    'Cabos, conectores e acessórios de instalação',
   ],
   MATERIAIS_PERMANENTES: [
-    'Aquisição de medidor de qualidade de energia',
+    'Aquisicao de medidor de qualidade de energia',
     'Compra de transformador de teste',
-    'Aquisição de notebook para análise de dados',
-    'Compra de equipamento de medição campométrico',
-    'Aquisição de gerador de sinais para testes',
+    'Aquisicao de notebook para analise de dados',
+    'Compra de equipamento de medicao campometrico',
   ],
   VIAGENS_DIARIAS: [
-    'Deslocamento para visita técnica em campo',
-    'Diária para reunião com parceiro institucional',
-    'Passagem aérea para congresso técnico',
+    'Deslocamento para visita tecnica em campo',
+    'Diaria para reuniao com parceiro institucional',
+    'Passagem aerea para congresso tecnico',
     'Hospedagem para treinamento externo',
-    'Deslocamento para inspeção de obra',
   ],
   CUSTOS_ADMINISTRATIVOS: [
-    'Aluguel de espaço para reuniões',
-    'Material de impressão e diagramação',
-    'Serviços de internet e telefonia',
-    'Seguro de equipamentos em trânsito',
-    'Taxas bancárias e administrativas',
+    'Aluguel de espaco para reunioes',
+    'Material de impressao e diagramacao',
+    'Servicos de internet e telefonia',
+    'Seguro de equipamentos em transito',
   ],
 };
+
+// ─── Utilitarios ──────────────────────────────────────────────────────────────
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -180,19 +119,7 @@ function randomChoice<T>(arr: T[]): T {
 
 function randomChoiceN<T>(arr: T[], n: number): T[] {
   const shuffled = [...arr].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, n);
-}
-
-function generateTitle(): string {
-  return `${randomChoice(PREFIXOS)} ${randomChoice(SUFIXOS)}`;
-}
-
-function generateProjectCode(index: number, year: number): string {
-  return `PDI-${year}-${String(index).padStart(3, '0')}`;
-}
-
-function randomDate(year: number, month: number): Date {
-  return new Date(year, month - 1, 1);
+  return shuffled.slice(0, Math.min(n, arr.length));
 }
 
 function addMonths(date: Date, months: number): Date {
@@ -207,73 +134,78 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
-function randomRubricas(budget: number): Array<{ nome: string; categoria: string; valorAlocado: number }> {
-  const categorias = Object.keys(RUBRICAS_POR_CATEGORIA);
-  const variations = categorias.map((cat) => {
-    const base = RUBRICAS_POR_CATEGORIA[cat];
-    return {
-      nome: randomChoice(base.nomes),
-      categoria: cat,
-      percentual: base.percentual + randomInt(-5, 5),
-    };
-  });
+function generateProjectCode(index: number, year: number): string {
+  return `PDI-${year}-${String(index).padStart(3, '0')}`;
+}
 
-  const total = variations.reduce((sum, r) => sum + r.percentual, 0);
-  return variations.map((r) => ({
-    nome: r.nome,
-    categoria: r.categoria,
-    valorAlocado: Math.round((budget * r.percentual) / total),
+function generateTitle(): string {
+  return `${randomChoice(PREFIXOS)} ${randomChoice(SUFIXOS)}`;
+}
+
+function distribuirRubricas(orcamento: number) {
+  const withVariation = RUBRICAS_ANEEL.map(r => ({
+    ...r,
+    percentual: r.percentualBase + randomInt(-5, 5),
   }));
+  const totalPct = withVariation.reduce((s, r) => s + r.percentual, 0);
+  const valores = withVariation.map(r => ({
+    ...r,
+    valor: Math.floor((orcamento * r.percentual) / totalPct),
+  }));
+  const soma = valores.reduce((s, r) => s + r.valor, 0);
+  valores[0].valor += (orcamento - soma);
+  return valores.map(r => ({ nome: r.nome, categoria: r.categoria, valorAlocado: r.valor }));
 }
 
 function calcularProgresso(milestones: Array<{ percentualPrevisto: number; dataExecucao: Date | null }>): number {
-  if (milestones.length === 0) return 0;
   const concluidos = milestones.filter(m => m.dataExecucao !== null);
   if (concluidos.length === 0) return 0;
   const total = concluidos.reduce((sum, m) => sum + Number(m.percentualPrevisto), 0);
   return Math.min(Math.round(total * 100) / 100, 100);
 }
 
+// ─── Geracao de usuarios ficticios ────────────────────────────────────────────
+
+const N_COORDENADORES = 10;
+const N_PESQUISADORES = 160;
+const N_BOLSISTAS = 750;
+
+const PRIMEIRO_NOMES = [
+  'Carlos','Joao','Pedro','Lucas','Marcos','Rafael','Andre','Bruno','Felipe','Gustavo',
+  'Thiago','Rodrigo','Daniel','Eduardo','Mateus','Paulo','Ricardo','Fernando','Leandro','Vitor',
+  'Ana','Maria','Julia','Fernanda','Camila','Patricia','Amanda','Aline','Mariana','Beatriz',
+  'Carla','Daniela','Gabriela','Helena','Isabela','Juliana','Larissa','Monica','Natalia','Paula',
+];
+
+const SOBRENOMES = [
+  'Silva','Santos','Oliveira','Souza','Lima','Costa','Pereira','Carvalho',
+  'Ferreira','Rodrigues','Almeida','Nascimento','Martins','Araujo','Melo',
+  'Barbosa','Ribeiro','Cardoso','Rocha','Correia','Dias','Nunes','Castro',
+  'Moraes','Tavares','Monteiro','Azevedo','Cunha','Borges','Campos',
+  'Pinto','Andrade','Freitas','Cavalcante','Moreira',
+];
+
+function gerarNome(index: number): string {
+  const nome = PRIMEIRO_NOMES[index % PRIMEIRO_NOMES.length];
+  const sob1 = SOBRENOMES[index % SOBRENOMES.length];
+  const sob2 = SOBRENOMES[(index + 7) % SOBRENOMES.length];
+  return `${nome} ${sob1} ${sob2}`;
+}
+
+function gerarEmail(papel: string, index: number): string {
+  const slug = papel.toLowerCase().slice(0, 5);
+  return `${slug}${String(index).padStart(3, '0')}@fluxfin.com`;
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
 async function main() {
-  console.log('🌱 Iniciando seed do banco de dados...\n');
+  console.log('Iniciando seed completo...\n');
 
-  console.log('📧 Criando usuários...');
-  const senhaHashed = await bcrypt.hash('senha123', 12);
-  const adminHash = await bcrypt.hash('admin123', 12);
-
-  const userData = [
-    { nome: 'Administrador', email: 'admin@fluxfin.com', senha: adminHash, papelSistema: PapelSistema.ADMIN },
-    { nome: 'Coordenador 1', email: 'coord1@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Coordenador 2', email: 'coord2@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Coordenador 3', email: 'coord3@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Pesquisador 1', email: 'pesq1@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Pesquisador 2', email: 'pesq2@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Pesquisador 3', email: 'pesq3@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Bolsista 1', email: 'bols1@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Bolsista 2', email: 'bols2@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-    { nome: 'Bolsista 3', email: 'bols3@fluxfin.com', senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
-  ];
-
-  const users = [];
-  for (const u of userData) {
-    const user = await prisma.usuario.upsert({
-      where: { email: u.email },
-      update: {},
-      create: u,
-    });
-    users.push(user);
-  }
-
-  const admin = users[0];
-  const coordenadores = users.slice(1, 4);
-  const pesquisadores = users.slice(4, 7);
-  const bolsistas = users.slice(7, 10);
-
-  console.log(`✅ ${users.length} usuários criados`);
-
-  console.log('\n🧹 Limpando dados anteriores...');
-  await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_check_coordenador ON "EquipeProjeto"');
-  await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_prevent_auditlog_modification ON "AuditLog"');
+  // 1. Limpar banco
+  console.log('Limpando banco de dados...');
+  await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_check_coordenador ON "EquipeProjeto"').catch(() => {});
+  await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_prevent_auditlog_modification ON "AuditLog"').catch(() => {});
   await prisma.auditLog.deleteMany();
   await prisma.documentoProjeto.deleteMany();
   await prisma.despesa.deleteMany();
@@ -281,30 +213,112 @@ async function main() {
   await prisma.equipeProjeto.deleteMany();
   await prisma.rubrica.deleteMany();
   await prisma.projeto.deleteMany();
-  await prisma.$executeRawUnsafe(`
-    CREATE TRIGGER trg_check_coordenador
-        AFTER INSERT OR DELETE ON "EquipeProjeto"
-        FOR EACH ROW
-        EXECUTE FUNCTION check_coordenador_exists()
-  `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TRIGGER trg_prevent_auditlog_modification
-        BEFORE UPDATE OR DELETE ON "AuditLog"
-        FOR EACH ROW
-        EXECUTE FUNCTION prevent_auditlog_modification()
-  `);
-  console.log('✅ Dados anteriores removidos');
+  await prisma.usuario.deleteMany();
+  console.log('Banco limpo\n');
 
-  console.log('\n📋 Criando 100 projetos...');
+  // 2. Criar usuarios
+  console.log('Criando usuarios...');
+  const senhaHashed = await bcrypt.hash('senha123', 10);
+  const adminHash = await bcrypt.hash('admin123', 10);
+
+  const admin = await prisma.usuario.create({
+    data: { nome: 'Administrador', email: 'admin@fluxfin.com', senha: adminHash, papelSistema: PapelSistema.ADMIN },
+  });
+
+  const coordenadores: typeof admin[] = [];
+  for (let i = 1; i <= N_COORDENADORES; i++) {
+    const u = await prisma.usuario.create({
+      data: { nome: gerarNome(i), email: gerarEmail('coord', i), senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
+    });
+    coordenadores.push(u);
+  }
+  console.log(`  ${coordenadores.length} coordenadores criados`);
+
+  const pesquisadores: typeof admin[] = [];
+  for (let i = 1; i <= N_PESQUISADORES; i++) {
+    const u = await prisma.usuario.create({
+      data: { nome: gerarNome(i + 100), email: gerarEmail('pesq', i), senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
+    });
+    pesquisadores.push(u);
+    if (i % 50 === 0) console.log(`  ${i}/${N_PESQUISADORES} pesquisadores criados`);
+  }
+
+  console.log('  Criando bolsistas (pode demorar)...');
+  const bolsistas: typeof admin[] = [];
+  for (let i = 1; i <= N_BOLSISTAS; i++) {
+    const u = await prisma.usuario.create({
+      data: { nome: gerarNome(i + 300), email: gerarEmail('bols', i), senha: senhaHashed, papelSistema: PapelSistema.USUARIO },
+    });
+    bolsistas.push(u);
+    if (i % 150 === 0) console.log(`  ${i}/${N_BOLSISTAS} bolsistas criados`);
+  }
+
+  const totalUsuarios = 1 + coordenadores.length + pesquisadores.length + bolsistas.length;
+  console.log(`Usuarios criados: ${totalUsuarios}\n`);
+
+  // 3. Controle de lotacao
+  const projPorCoord = new Map<string, number>(coordenadores.map(c => [c.id, 0]));
+  const projPorPesq = new Map<string, number>(pesquisadores.map(p => [p.id, 0]));
+  const projPorBols = new Map<string, number>(bolsistas.map(b => [b.id, 0]));
+  let coordCursor = 0, pesqCursor = 0, bolsCursor = 0;
+
+  function proximoCoord(): typeof admin {
+    for (let t = 0; t < coordenadores.length; t++) {
+      const c = coordenadores[coordCursor % coordenadores.length];
+      coordCursor++;
+      if ((projPorCoord.get(c.id) ?? 0) < 10) {
+        projPorCoord.set(c.id, (projPorCoord.get(c.id) ?? 0) + 1);
+        return c;
+      }
+    }
+    throw new Error('Nenhum coordenador disponivel!');
+  }
+
+  function proximosPesq(n: number): typeof admin[] {
+    const sel: typeof admin[] = [];
+    let t = 0;
+    while (sel.length < n && t < pesquisadores.length * 2) {
+      const p = pesquisadores[pesqCursor % pesquisadores.length];
+      pesqCursor++; t++;
+      if ((projPorPesq.get(p.id) ?? 0) < 5) {
+        projPorPesq.set(p.id, (projPorPesq.get(p.id) ?? 0) + 1);
+        sel.push(p);
+      }
+    }
+    return sel;
+  }
+
+  function proximosBols(n: number): typeof admin[] {
+    const sel: typeof admin[] = [];
+    let t = 0;
+    while (sel.length < n && t < bolsistas.length) {
+      const b = bolsistas[bolsCursor % bolsistas.length];
+      bolsCursor++; t++;
+      if ((projPorBols.get(b.id) ?? 0) < 1) {
+        projPorBols.set(b.id, 1);
+        sel.push(b);
+      }
+    }
+    return sel;
+  }
+
+  // 4. Criar 100 projetos
+  console.log('Criando 100 projetos...');
   const agora = new Date();
+  const duracoes = [12, 24, 36, 48];
   const statusPool: StatusProjeto[] = [StatusProjeto.ATIVO, StatusProjeto.CONCLUIDO, StatusProjeto.SUSPENSO];
+  const projects: Array<{
+    id: string; codigo: string; titulo: string;
+    budget: number; duration: number;
+    startDate: Date; endDate: Date; status: StatusProjeto;
+  }> = [];
+  const usedCodes = new Set<string>();
 
-  const projects = [];
   for (let i = 1; i <= 100; i++) {
     const year = randomInt(2022, 2026);
     const month = randomInt(1, 12);
-    const duration = randomChoice([12, 24, 36, 48]);
-    const startDate = randomDate(year, month);
+    const duration = randomChoice(duracoes);
+    const startDate = new Date(year, month - 1, 1); // dia 1 fixo
     const endDate = addMonths(startDate, duration);
     const budget = randomInt(3000000, 5000000);
 
@@ -317,363 +331,172 @@ async function main() {
       status = randomChoice(statusPool);
     }
 
+    let code = generateProjectCode(i, year);
+    let suffix = 0;
+    while (usedCodes.has(code)) { suffix++; code = `PDI-${year}-${String(i).padStart(3, '0')}-${suffix}`; }
+    usedCodes.add(code);
+
     const project = await prisma.projeto.create({
-      data: {
-        codigo: generateProjectCode(i, year),
-        titulo: generateTitle(),
-        descricao: randomChoice(DESCRICOES_PROJETO),
-        dataInicio: startDate,
-        dataTermino: endDate,
-        orcamentoGlobal: budget,
-        status,
-        progressoFisico: 0,
-      },
+      data: { codigo: code, titulo: generateTitle(), descricao: randomChoice(DESCRICOES_PROJETO), dataInicio: startDate, dataTermino: endDate, orcamentoGlobal: budget, status, progressoFisico: 0 },
     });
-
     projects.push({ ...project, budget, duration, startDate, endDate, status });
+    if (i % 25 === 0) console.log(`  ${i}/100 projetos criados`);
   }
+  console.log('100 projetos criados\n');
 
-  console.log('✅ 100 projetos criados');
+  // 5. Rubricas ANEEL
+  console.log('Distribuindo orcamento nas rubricas ANEEL...');
+  for (const p of projects) {
+    const rubricas = distribuirRubricas(p.budget);
+    await prisma.rubrica.createMany({ data: rubricas.map(r => ({ projetoId: p.id, nome: r.nome, categoria: r.categoria, valorAlocado: r.valorAlocado })) });
+  }
+  console.log('Rubricas criadas (6 por projeto)\n');
 
-  console.log('\n💰 Criando rubricas para cada projeto...');
+  // 6. Equipes
+  console.log('Montando equipes (respeitando limites de lotacao)...');
+  let totalEquipe = 0;
   for (const project of projects) {
-    const rubricas = randomRubricas(project.budget);
-    await prisma.rubrica.createMany({
-      data: rubricas.map((r) => ({
-        projetoId: project.id,
-        nome: r.nome,
-        categoria: r.categoria,
-        valorAlocado: r.valorAlocado,
-      })),
-    });
-  }
-
-  console.log('✅ Rubricas criadas para todos os projetos');
-
-  console.log('\n👥 Criando equipes para cada projeto...');
-  let coordIndex = 0;
-  let pesqIndex = 0;
-  let bolsIndex = 0;
-
-  const teamEntries: Array<{ projetoId: string; usuarioId: string; papel: string }> = [];
-
-  for (const project of projects) {
-    const coordenador = coordenadores[coordIndex % coordenadores.length];
-    coordIndex++;
-    teamEntries.push({ projetoId: project.id, usuarioId: coordenador.id, papel: 'COORDENADOR' });
-
-    const numPesq = randomInt(2, 4);
-    for (let j = 0; j < numPesq; j++) {
-      const pesq = pesquisadores[pesqIndex % pesquisadores.length];
-      teamEntries.push({ projetoId: project.id, usuarioId: pesq.id, papel: 'PESQUISADOR' });
-      pesqIndex++;
+    const coord = proximoCoord();
+    const pesqSel = proximosPesq(randomInt(5, 10));
+    const bolsSel = proximosBols(randomInt(5, 10));
+    const membros = [
+      { usuarioId: coord.id, papel: 'COORDENADOR' as const },
+      ...pesqSel.map(u => ({ usuarioId: u.id, papel: 'PESQUISADOR' as const })),
+      ...bolsSel.map(u => ({ usuarioId: u.id, papel: 'BOLSISTA' as const })),
+    ];
+    for (const m of membros) {
+      await prisma.equipeProjeto.create({ data: { projetoId: project.id, usuarioId: m.usuarioId, papel: m.papel } });
     }
-
-    const numBols = randomInt(1, 3);
-    for (let j = 0; j < numBols; j++) {
-      const bols = bolsistas[bolsIndex % bolsistas.length];
-      teamEntries.push({ projetoId: project.id, usuarioId: bols.id, papel: 'BOLSISTA' });
-      bolsIndex++;
-    }
+    totalEquipe += membros.length;
   }
+  console.log(`${totalEquipe} vinculos de equipe criados\n`);
 
-  const uniqueTeams = new Map<string, typeof teamEntries[0]>();
-  for (const entry of teamEntries) {
-    const key = `${entry.projetoId}-${entry.usuarioId}`;
-    if (!uniqueTeams.has(key)) {
-      uniqueTeams.set(key, entry);
-    }
-  }
-
-  const teamData = Array.from(uniqueTeams.values());
-  for (const t of teamData) {
-    await prisma.equipeProjeto.create({
-      data: {
-        projetoId: t.projetoId,
-        usuarioId: t.usuarioId,
-        papel: t.papel as any,
-      },
-    });
-  }
-
-  console.log(`✅ ${teamData.length} membros de equipe criados`);
-
-  console.log('\n🏁 Criando milestones para cada projeto...');
+  // 7. Milestones
+  console.log('Criando milestones...');
   let totalMilestones = 0;
-  const projectMilestones: Map<string, Array<{ id: string; percentualPrevisto: number; dataExecucao: Date | null; dataPrevista: Date }>> = new Map();
-
+  const projectMilestones = new Map<string, Array<{ id: string; percentualPrevisto: number; dataExecucao: Date | null }>>();
   for (const project of projects) {
-    const numMilestones = randomInt(3, 7);
-    const selectedMilestones = randomChoiceN(MILESTONE_POOL, numMilestones).sort((a, b) => {
-      const faseOrder = { inicio: 0, planejamento: 1, execucao: 2, validacao: 3, encerramento: 4 };
-      return faseOrder[a.fase as keyof typeof faseOrder] - faseOrder[b.fase as keyof typeof faseOrder];
+    const numMs = randomInt(3, 7);
+    const selected = randomChoiceN(MILESTONE_POOL, numMs).sort((a, b) => {
+      const order = { inicio: 0, planejamento: 1, execucao: 2, validacao: 3, encerramento: 4 };
+      return order[a.fase as keyof typeof order] - order[b.fase as keyof typeof order];
     });
-
-    const durationDays = Math.ceil((project.endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const projectMilestoneData: Array<{ id: string; percentualPrevisto: number; dataExecucao: Date | null; dataPrevista: Date }> = [];
-    let predecessorId: string | null = null;
-
-    for (let m = 0; m < selectedMilestones.length; m++) {
-      const ms = selectedMilestones[m];
-      const fraction = (m + 1) / selectedMilestones.length;
-      const daysFromStart = Math.round(durationDays * fraction) + randomInt(-15, 15);
-      const milestoneDate = addDays(project.startDate, Math.max(30, Math.min(daysFromStart, durationDays - 5)));
-
-      let isCompleted = false;
+    const durationDays = Math.ceil((project.endDate.getTime() - project.startDate.getTime()) / 86400000);
+    const msData: Array<{ id: string; percentualPrevisto: number; dataExecucao: Date | null }> = [];
+    for (let m = 0; m < selected.length; m++) {
+      const ms = selected[m];
+      const fraction = (m + 1) / selected.length;
+      const daysFromStart = Math.max(30, Math.min(Math.round(durationDays * fraction) + randomInt(-15, 15), durationDays - 5));
+      const milestoneDate = addDays(project.startDate, daysFromStart);
       let dataExecucao: Date | null = null;
-
       if (project.status === StatusProjeto.CONCLUIDO) {
-        isCompleted = true;
         dataExecucao = addDays(milestoneDate, randomInt(-10, 5));
-      } else if (project.status === StatusProjeto.ATIVO) {
-        if (milestoneDate < agora) {
-          isCompleted = Math.random() < 0.75;
-          if (isCompleted) {
-            dataExecucao = addDays(milestoneDate, randomInt(-5, 15));
-          }
-        }
+      } else if (project.status === StatusProjeto.ATIVO && milestoneDate < agora) {
+        if (Math.random() < 0.75) dataExecucao = addDays(milestoneDate, randomInt(-5, 15));
       }
-
       const created = await prisma.milestone.create({
-        data: {
-          projetoId: project.id,
-          nome: ms.nome,
-          descricao: `${ms.nome} - ${project.codigo}`,
-          dataPrevista: milestoneDate,
-          dataExecucao,
-          percentualPrevisto: ms.percentual,
-        },
+        data: { projetoId: project.id, nome: ms.nome, descricao: `${ms.nome} - ${project.codigo}`, dataPrevista: milestoneDate, dataExecucao, percentualPrevisto: ms.percentual },
       });
-
-      projectMilestoneData.push({
-        id: created.id,
-        percentualPrevisto: ms.percentual,
-        dataExecucao,
-        dataPrevista: milestoneDate,
-      });
-
+      msData.push({ id: created.id, percentualPrevisto: ms.percentual, dataExecucao });
       totalMilestones++;
     }
-
-    projectMilestones.set(project.id, projectMilestoneData);
+    projectMilestones.set(project.id, msData);
   }
+  console.log(`${totalMilestones} milestones criados\n`);
 
-  console.log(`✅ ${totalMilestones} milestones criados`);
-
-  console.log('\n💸 Criando despesas realistas...');
-  const categorias = ['RECURSOS_HUMANOS', 'SERVICOS_TERCEIROS', 'MATERIAIS_CONSUMO', 'MATERIAIS_PERMANENTES', 'VIAGENS_DIARIAS', 'CUSTOS_ADMINISTRATIVOS'] as const;
+  // 8. Despesas
+  console.log('Criando despesas...');
   let totalDespesas = 0;
-
+  const allUsers = [...coordenadores, ...pesquisadores.slice(0, 30)];
   for (const project of projects) {
     if (project.status === StatusProjeto.SUSPENSO && Math.random() < 0.5) continue;
-
-    const rubricas = await prisma.rubrica.findMany({
-      where: { projetoId: project.id, deletedAt: null },
-    });
-
-    const milestonesDoProjeto = projectMilestones.get(project.id) || [];
-    const concluidos = milestonesDoProjeto.filter(m => m.dataExecucao !== null);
-
+    const rubricas = await prisma.rubrica.findMany({ where: { projetoId: project.id } });
+    const msConcluidos = (projectMilestones.get(project.id) ?? []).filter(m => m.dataExecucao !== null);
     const numDespesas = randomInt(5, 15);
-    const despesasData: Array<{
-      projetoId: string;
-      rubricaId: string;
-      usuarioId: string;
-      descricao: string;
-      valor: number;
-      dataDespesa: Date;
-      status: StatusDespesa;
-      justificativa: string | null;
-      dataAprovacao: Date | null;
-      milestoneId: string | null;
-    }> = [];
-
+    const despesasData: any[] = [];
     for (let d = 0; d < numDespesas; d++) {
       const rubrica = randomChoice(rubricas);
-      const categoria = categorias.find(c => c === rubrica.categoria) || 'CUSTOS_ADMINISTRATIVOS';
-      const descricoes = DESCRICOES_DESPESA[categoria];
-      let descricao = randomChoice(descricoes);
-      descricao = descricao.replace('{mes}', `${randomInt(1, 12)}/${randomInt(2023, 2026)}`);
-
+      const descricoes = DESCRICOES_DESPESA[rubrica.categoria] ?? DESCRICOES_DESPESA['CUSTOS_ADMINISTRATIVOS'];
       const saldo = Number(rubrica.valorAlocado) - Number(rubrica.valorGasto);
       const maxValor = Math.min(saldo * 0.4, Number(rubrica.valorAlocado) * 0.15);
       if (maxValor < 1000) continue;
-
       const valor = randomInt(1000, Math.max(1001, Math.round(maxValor)));
-
-      const daysFromStart = randomInt(0, Math.ceil((project.endDate.getTime() - project.startDate.getTime()) / (1000 * 60 * 60 * 24)));
-      const dataDespesa = addDays(project.startDate, daysFromStart);
-
-      let status: StatusDespesa;
-      let dataAprovacao: Date | null = null;
-      const justificativaStatus = dataDespesa < agora;
-
+      const durationDays = Math.ceil((project.endDate.getTime() - project.startDate.getTime()) / 86400000);
+      const dataDespesa = addDays(project.startDate, randomInt(0, durationDays));
+      let status: StatusDespesa, dataAprovacao: Date | null = null;
       if (dataDespesa > agora) {
         status = StatusDespesa.PENDENTE;
-      } else if (justificativaStatus) {
-        const rand = Math.random();
-        if (rand < 0.55) {
-          status = StatusDespesa.PAGA;
-          dataAprovacao = addDays(dataDespesa, randomInt(3, 30));
-        } else if (rand < 0.80) {
-          status = StatusDespesa.APROVADA;
-          dataAprovacao = addDays(dataDespesa, randomInt(2, 15));
-        } else if (rand < 0.92) {
-          status = StatusDespesa.PENDENTE;
-        } else {
-          status = StatusDespesa.REJEITADA;
-          dataAprovacao = addDays(dataDespesa, randomInt(5, 20));
-        }
       } else {
-        status = randomChoice([StatusDespesa.PENDENTE, StatusDespesa.APROVADA]);
+        const r = Math.random();
+        if (r < 0.55) { status = StatusDespesa.PAGA; dataAprovacao = addDays(dataDespesa, randomInt(3, 30)); }
+        else if (r < 0.80) { status = StatusDespesa.APROVADA; dataAprovacao = addDays(dataDespesa, randomInt(2, 15)); }
+        else if (r < 0.92) { status = StatusDespesa.PENDENTE; }
+        else { status = StatusDespesa.REJEITADA; dataAprovacao = addDays(dataDespesa, randomInt(5, 20)); }
       }
-
-      let milestoneId: string | null = null;
-      if (concluidos.length > 0 && Math.random() < 0.4) {
-        milestoneId = randomChoice(concluidos).id;
-      }
-
-      const usuario = randomChoice([...coordenadores, ...pesquisadores, ...bolsistas]);
-
       despesasData.push({
         projetoId: project.id,
         rubricaId: rubrica.id,
-        usuarioId: usuario.id,
-        descricao,
-        valor,
-        dataDespesa,
-        status,
-        justificativa: status === StatusDespesa.REJEITADA ? randomChoice([
-          'Despesa não compatível com o escopo do projeto',
-          'Documentação insuficiente para aprovação',
-          'Valor acima do limite permitido para a categoria',
-          'Despesa duplicada identificada',
-        ]) : null,
+        usuarioId: randomChoice(allUsers).id,
+        descricao: randomChoice(descricoes),
+        valor, dataDespesa, status,
+        justificativa: status === StatusDespesa.REJEITADA ? 'Despesa nao compativel com o escopo do projeto' : null,
         dataAprovacao,
-        milestoneId,
+        milestoneId: msConcluidos.length > 0 && Math.random() < 0.4 ? randomChoice(msConcluidos).id : null,
       });
     }
-
     if (despesasData.length > 0) {
-      await prisma.despesa.createMany({ data: despesasData as any });
-
+      await prisma.despesa.createMany({ data: despesasData });
       for (const d of despesasData) {
         if (d.status === StatusDespesa.APROVADA || d.status === StatusDespesa.PAGA) {
-          await prisma.rubrica.update({
-            where: { id: d.rubricaId },
-            data: { valorGasto: { increment: d.valor } },
-          });
+          await prisma.rubrica.update({ where: { id: d.rubricaId }, data: { valorGasto: { increment: d.valor } } });
         }
       }
-
       totalDespesas += despesasData.length;
     }
   }
+  console.log(`${totalDespesas} despesas criadas\n`);
 
-  console.log(`✅ ${totalDespesas} despesas criadas`);
-
-  console.log('\n📊 Atualizando progresso físico dos projetos...');
+  // 9. Progresso fisico
+  console.log('Atualizando progresso fisico...');
   for (const project of projects) {
-    const milestonesDoProjeto = projectMilestones.get(project.id) || [];
-    const progresso = calcularProgresso(milestonesDoProjeto);
-
-    await prisma.projeto.update({
-      where: { id: project.id },
-      data: { progressoFisico: progresso },
-    });
+    const ms = projectMilestones.get(project.id) ?? [];
+    await prisma.projeto.update({ where: { id: project.id }, data: { progressoFisico: calcularProgresso(ms) } });
   }
+  console.log('Progresso fisico atualizado\n');
 
-  console.log('✅ Progresso físico atualizado');
+  // 10. Recriar triggers
+  await prisma.$executeRawUnsafe(`
+    CREATE TRIGGER trg_check_coordenador
+      AFTER INSERT OR DELETE ON "EquipeProjeto"
+      FOR EACH ROW EXECUTE FUNCTION check_coordenador_exists()
+  `).catch(() => console.log('Trigger trg_check_coordenador nao recriado'));
 
-  console.log('\n📄 Criando documentos de exemplo...');
-  let totalDocs = 0;
-  const tiposDocumento = [
-    { nome: 'Relatório Parcial.pdf', extensao: 'pdf' },
-    { nome: 'Planilha Orçamentária.xlsx', extensao: 'xlsx' },
-    { nome: 'Contrato Social.pdf', extensao: 'pdf' },
-    { nome: 'Proposta Técnica.docx', extensao: 'docx' },
-    { nome: 'Laudo de Ensaio.pdf', extensao: 'pdf' },
-    { nome: 'Cronograma de Execução.xlsx', extensao: 'xlsx' },
-  ];
+  await prisma.$executeRawUnsafe(`
+    CREATE TRIGGER trg_prevent_auditlog_modification
+      BEFORE UPDATE OR DELETE ON "AuditLog"
+      FOR EACH ROW EXECUTE FUNCTION prevent_auditlog_modification()
+  `).catch(() => console.log('Trigger trg_prevent_auditlog_modification nao recriado'));
 
-  for (const project of projects) {
-    if (Math.random() < 0.3) continue;
-
-    const numDocs = randomInt(1, 4);
-    const docsSelecionados = randomChoiceN(tiposDocumento, numDocs);
-    const usuario = randomChoice([...coordenadores, ...pesquisadores]);
-
-    for (const doc of docsSelecionados) {
-      await prisma.documentoProjeto.create({
-        data: {
-          projetoId: project.id,
-          usuarioId: usuario.id,
-          nomeArquivo: `${project.codigo}_${doc.nome}`,
-          extensao: doc.extensao,
-          urlArmazenamento: `data:application/octet-stream;base64,${Buffer.from(`documento-ficticio-${project.id}-${doc.nome}`).toString('base64')}`,
-        },
-      });
-      totalDocs++;
-    }
-  }
-
-  console.log(`✅ ${totalDocs} documentos criados`);
-
-  console.log('\n📝 Criando logs de auditoria...');
-  let totalLogs = 0;
-
-  for (const project of projects.slice(0, 20)) {
-    const usuario = randomChoice([...coordenadores, ...pesquisadores]);
-
-    await prisma.auditLog.create({
-      data: {
-        usuarioId: usuario.id,
-        projetoId: project.id,
-        entidade: 'Projeto',
-        entidadeId: project.id,
-        acao: 'CRIAR',
-        dadosNovos: { codigo: project.codigo, titulo: project.titulo },
-      },
-    });
-    totalLogs++;
-
-    if (project.status === StatusProjeto.CONCLUIDO) {
-      await prisma.auditLog.create({
-        data: {
-          usuarioId: usuario.id,
-          projetoId: project.id,
-          entidade: 'Projeto',
-          entidadeId: project.id,
-          acao: 'ATUALIZAR',
-          dadosAnteriores: { status: 'ATIVO' },
-          dadosNovos: { status: 'CONCLUIDO' },
-        },
-      });
-      totalLogs++;
-    }
-  }
-
-  console.log(`✅ ${totalLogs} logs de auditoria criados`);
-
-  console.log('\n🎉 Seed concluído com sucesso!');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`📊 Resumo:`);
-  console.log(`   👤 Usuários: ${users.length}`);
-  console.log(`   📁 Projetos: ${projects.length}`);
-  console.log(`   💰 Rubricas: ${projects.length * 6}`);
-  console.log(`   👥 Equipes: ${teamData.length}`);
-  console.log(`   🏁 Milestones: ${totalMilestones}`);
-  console.log(`   💸 Despesas: ${totalDespesas}`);
-  console.log(`   📄 Documentos: ${totalDocs}`);
-  console.log(`   📝 Audit Logs: ${totalLogs}`);
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  // Resumo
+  console.log('\n========================================');
+  console.log('SEED CONCLUIDO COM SUCESSO!');
+  console.log('========================================');
+  console.log(`Total de usuarios  : ${totalUsuarios}`);
+  console.log(`  Admin            : 1`);
+  console.log(`  Coordenadores    : ${coordenadores.length} (max 10 projetos cada)`);
+  console.log(`  Pesquisadores    : ${pesquisadores.length} (max 5 projetos cada)`);
+  console.log(`  Bolsistas        : ${bolsistas.length} (max 1 projeto cada)`);
+  console.log(`Projetos           : ${projects.length}`);
+  console.log(`Rubricas ANEEL     : ${projects.length * 6} (6 por projeto)`);
+  console.log(`Vinculos de equipe : ${totalEquipe}`);
+  console.log(`Milestones         : ${totalMilestones}`);
+  console.log(`Despesas           : ${totalDespesas}`);
+  console.log('========================================');
+  console.log('Acesso admin: admin@fluxfin.com / admin123');
+  console.log('Acesso coord: coord001@fluxfin.com / senha123');
+  console.log('========================================');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Erro durante a execução do seed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error('Erro no seed:', e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });

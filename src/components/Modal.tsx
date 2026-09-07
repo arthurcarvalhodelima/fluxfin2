@@ -7,23 +7,14 @@ export interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
   footer?: React.ReactNode;
 }
-
-const sizeClasses = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
-  xl: "max-w-xl",
-};
 
 export default function Modal({
   isOpen,
   onClose,
   title,
   children,
-  size = "md",
   footer,
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -51,7 +42,7 @@ export default function Modal({
       ref={overlayRef}
       className="fluxfin-modal-overlay"
     >
-      <div className={`fluxfin-modal ${sizeClasses[size]}`}>
+      <div className="fluxfin-modal" style={{ maxWidth: 800 }}>
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-border">
             <h2 className="text-lg font-semibold text-foreground">{title}</h2>

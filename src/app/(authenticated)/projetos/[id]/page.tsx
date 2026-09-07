@@ -137,9 +137,9 @@ const categoriaLabels: Record<string, string> = {
   CUSTOS_ADMINISTRATIVOS: "Custos Administrativos",
 };
 
-export default function ProjetoDetailPage() {
+export default function ProjetoDetailPage({ id: idProp }: { id?: string } = {}) {
   const params = useParams();
-  const id = params.id as string;
+  const id = idProp || (params.id as string);
   const { data: session } = useSession();
   const isAdmin = session?.user?.papelSistema === "ADMIN";
   const [projeto, setProjeto] = useState<Projeto | null>(null);
@@ -428,33 +428,38 @@ export default function ProjetoDetailPage() {
   async function handleSaveRubrica() {
     if (!rubricaForm.nome || !rubricaForm.categoria || !rubricaForm.valorAlocado) return;
     setRubricaLoading(true);
-    const url = editingRubrica
-      ? `/api/projetos/${id}/rubricas/${editingRubrica}`
-      : `/api/projetos/${id}/rubricas`;
-    const res = await fetch(url, {
-      method: editingRubrica ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nome: rubricaForm.nome,
-        categoria: rubricaForm.categoria,
-        valorAlocado: parseFloat(rubricaForm.valorAlocado),
-      }),
-    });
-    if (res.ok) {
-      const saved = await res.json();
-      const saldo = Number(saved.valorAlocado) - Number(saved.valorGasto || 0);
-      const percentual = Number(saved.valorAlocado) > 0
-        ? (Number(saved.valorGasto || 0) / Number(saved.valorAlocado) * 100)
-        : 0;
-      const rubricaData = { ...saved, saldo, percentualGasto: percentual.toFixed(2) };
-      if (editingRubrica) {
-        setProjeto({ ...projeto!, rubricas: projeto!.rubricas.map((r) => r.id === editingRubrica ? rubricaData : r) });
-      } else {
-        setProjeto({ ...projeto!, rubricas: [...projeto!.rubricas, rubricaData] });
+    try {
+      const url = editingRubrica
+        ? `/api/projetos/${id}/rubricas/${editingRubrica}`
+        : `/api/projetos/${id}/rubricas`;
+      const res = await fetch(url, {
+        method: editingRubrica ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: rubricaForm.nome,
+          categoria: rubricaForm.categoria,
+          valorAlocado: parseFloat(rubricaForm.valorAlocado),
+        }),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        const saldo = Number(saved.valorAlocado) - Number(saved.valorGasto || 0);
+        const percentual = Number(saved.valorAlocado) > 0
+          ? (Number(saved.valorGasto || 0) / Number(saved.valorAlocado) * 100)
+          : 0;
+        const rubricaData = { ...saved, saldo, percentualGasto: percentual.toFixed(2) };
+        if (editingRubrica) {
+          setProjeto({ ...projeto!, rubricas: projeto!.rubricas.map((r) => r.id === editingRubrica ? rubricaData : r) });
+        } else {
+          setProjeto({ ...projeto!, rubricas: [...projeto!.rubricas, rubricaData] });
+        }
+        setShowRubricaModal(false);
       }
-      setShowRubricaModal(false);
+    } catch {
+      // erro de rede
+    } finally {
+      setRubricaLoading(false);
     }
-    setRubricaLoading(false);
   }
 
   async function handleAddMember() {
@@ -1301,7 +1306,6 @@ export default function ProjetoDetailPage() {
           isOpen={showExpenseModal}
           onClose={() => setShowExpenseModal(false)}
           title="Nova Despesa"
-          size="lg"
         >
           <ExpenseForm
             projetoId={id}

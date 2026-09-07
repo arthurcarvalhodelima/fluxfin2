@@ -92,7 +92,7 @@ export async function POST(
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    const projeto = await prisma.projeto.findUnique({ where: { id } })
+    const projeto = await prisma.projeto.findFirst({ where: { id, deletedAt: null } })
     if (!projeto) {
       return NextResponse.json({ error: 'Projeto não encontrado' }, { status: 404 })
     }
@@ -120,7 +120,11 @@ export async function POST(
           where: { id: parsed.data.rubricaId },
         })
 
-        const saldo = Number(currentRubrica!.valorAlocado) - Number(currentRubrica!.valorGasto)
+        if (!currentRubrica) {
+          throw new Error('Rubrica não encontrada')
+        }
+
+        const saldo = Number(currentRubrica.valorAlocado) - Number(currentRubrica.valorGasto)
         if (saldo < parsed.data.valor) {
           throw new Error(`Saldo insuficiente na rubrica. Disponível: ${saldo}`)
         }
@@ -136,6 +140,11 @@ export async function POST(
             justificativa: parsed.data.justificativa,
             milestoneId: parsed.data.milestoneId ?? null,
           },
+        })
+
+        await tx.rubrica.update({
+          where: { id: parsed.data.rubricaId },
+          data: { valorGasto: { increment: parsed.data.valor } },
         })
 
         return expense

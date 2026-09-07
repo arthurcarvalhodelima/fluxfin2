@@ -1,0 +1,36 @@
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[31m[auth][error][0m JWTSessionError: Read more at https://errors.authjs.dev#jwtsessionerror
+[31m[auth][cause][0m: PrismaClientValidationError: In order to run Prisma Client on edge runtime, either:
+- Use Prisma Accelerate: https://pris.ly/d/accelerate
+- Use Driver Adapters: https://pris.ly/d/driver-adapters
+    at Object.get (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:5885:23)
+    at Object.singleLoader (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6359:115)
+    at Qr.dispatchBatches (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6261:67)
+    at C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6249:18
+    at Object.<anonymous> (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:385:17)
+    at Object.callbackWithRelease (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\node_modules\next\dist\server\web\sandbox\resource-managers.js:82:33)
+    at Timeout.wrappedCallback (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\node_modules\next\dist\server\web\sandbox\resource-managers.js:108:29)
+    at listOnTimeout (node:internal/timers:635:17)
+    at process.processTimers (node:internal/timers:571:7)
+[31m[auth][details][0m: {}
+[31m[auth][error][0m JWTSessionError: Read more at https://errors.authjs.dev#jwtsessionerror
+[31m[auth][cause][0m: PrismaClientValidationError: In order to run Prisma Client on edge runtime, either:
+- Use Prisma Accelerate: https://pris.ly/d/accelerate
+- Use Driver Adapters: https://pris.ly/d/driver-adapters
+    at Object.get (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:5885:23)
+    at Object.singleLoader (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6359:115)
+    at Qr.dispatchBatches (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6261:67)
+    at C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:6249:18
+    at Object.<anonymous> (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\.next\dev\server\edge\chunks\node_modules_@prisma_client_063b9ak._.js:385:17)
+    at Object.callbackWithRelease (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\node_modules\next\dist\server\web\sandbox\resource-managers.js:82:33)
+    at Timeout.wrappedCallback (C:\Users\arthu\OneDrive\Documentos\GitHub\fluxfin2\node_modules\next\dist\server\web\sandbox\resource-managers.js:108:29)
+    at listOnTimeout (node:internal/timers:635:17)
+    at process.processTimers (node:internal/timers:571:7)
+[31m[auth][details][0m: {}
+⨯ unhandledRejection: Error: Both middleware file "./src\middleware.ts" and proxy file "./src\proxy.ts" are detected. Please use "./src\proxy.ts" only. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+    at ignore-listed frames

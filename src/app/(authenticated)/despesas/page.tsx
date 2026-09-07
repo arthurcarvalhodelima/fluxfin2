@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Badge from "@/components/Badge";
+import DespesasRelatorioPreview from "@/components/DespesasRelatorioPreview";
 import { maskName } from "@/lib/lgpd";
 
 interface Despesa {
@@ -36,27 +37,46 @@ export default function DespesasPage() {
   const [despesas, setDespesas] = useState<Despesa[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [projetoId, setProjetoId] = useState("");
+  const [projetos, setProjetos] = useState<{ id: string; codigo: string; titulo: string }[]>([]);
   const [categoria, setCategoria] = useState("");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
   const [total, setTotal] = useState(0);
+  const [showReport, setShowReport] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    fetch("/api/projetos?limit=1000")
+      .then((r) => r.ok ? r.json() : { projetos: [] })
+      .then((json) => setProjetos(json.projetos || []))
+      .catch(() => setProjetos([]));
+  }, []);
 
   const fetchDespesas = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
+    if (projetoId) params.set("projetoId", projetoId);
     if (categoria) params.set("categoria", categoria);
     params.set("order", order);
     params.set("page", String(page));
-    params.set("limit", "50");
+    params.set("limit", String(limit));
 
-    const res = await fetch(`/api/despesas?${params}`);
-    const json = await res.json();
-    setDespesas(json.despesas || []);
-    setTotal(json.total || 0);
-    setLoading(false);
-  }, [search, categoria, order, page]);
+    try {
+      const res = await fetch(`/api/despesas?${params}`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      setDespesas(json.despesas || []);
+      setTotal(json.total || 0);
+    } catch {
+      setDespesas([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, projetoId, categoria, order, page, limit]);
 
   useEffect(() => {
     fetchDespesas();
@@ -70,7 +90,7 @@ export default function DespesasPage() {
     }, 300);
   }
 
-  const totalPages = Math.ceil(total / 50);
+  const totalPages = Math.ceil(total / limit);
 
   return (
     <div className="space-y-6">
@@ -92,6 +112,16 @@ export default function DespesasPage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <select
+            value={projetoId}
+            onChange={(e) => { setProjetoId(e.target.value); setPage(1); }}
+            className="fluxfin-input"
+          >
+            <option value="">Todos os projetos</option>
+            {projetos.map((p) => (
+              <option key={p.id} value={p.id}>{p.codigo} - {p.titulo}</option>
+            ))}
+          </select>
+          <select
             value={categoria}
             onChange={(e) => { setCategoria(e.target.value); setPage(1); }}
             className="fluxfin-input"
@@ -110,6 +140,16 @@ export default function DespesasPage() {
                 d={order === "desc" ? "M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" : "M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4"} />
             </svg>
             Data {order === "desc" ? "Recente" : "Antiga"}
+          </button>
+          <button
+            onClick={() => setShowReport(true)}
+            disabled={despesas.length === 0}
+            className="fluxfin-btn-primary flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Emitir Relatório
           </button>
         </div>
 
@@ -165,9 +205,21 @@ export default function DespesasPage() {
             </div>
 
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-              <p className="text-sm text-muted">
-                {total} despesa(s) encontrada(s)
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted">
+                  {total} despesa(s) encontrada(s)
+                </p>
+                <select
+                  value={limit}
+                  onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                  className="fluxfin-input w-auto text-sm"
+                >
+                  <option value={10}>10 por página</option>
+                  <option value={25}>25 por página</option>
+                  <option value={50}>50 por página</option>
+                  <option value={100}>100 por página</option>
+                </select>
+              </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
@@ -191,6 +243,19 @@ export default function DespesasPage() {
           </>
         )}
       </div>
+
+      <DespesasRelatorioPreview
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        despesas={despesas}
+        filtros={{
+          projeto: projetos.find((p) => p.id === projetoId)
+            ? `${projetos.find((p) => p.id === projetoId)!.codigo} - ${projetos.find((p) => p.id === projetoId)!.titulo}`
+            : "",
+          categoria: categoria ? categoriaLabels[categoria] || categoria : "",
+          busca: search,
+        }}
+      />
     </div>
   );
 }

@@ -7,7 +7,10 @@ export const dynamic = "force-dynamic";
 
 export default async function PortfolioPage() {
   const session = await auth();
-  const userProjectIds = await getUserProjectIds(session!.user.id, session!.user.papelSistema);
+  if (!session?.user) {
+    return <div className="text-center py-20 text-muted">Não autenticado</div>;
+  }
+  const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema);
 
   const where: Record<string, unknown> = { deletedAt: null };
   if (userProjectIds !== null) {

@@ -14,9 +14,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const categoria = searchParams.get('categoria') || ''
+    const projetoId = searchParams.get('projetoId') || ''
     const order = searchParams.get('order') || 'desc'
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50') || 50))
     const skip = (page - 1) * limit
 
     const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
@@ -25,7 +26,12 @@ export async function GET(request: NextRequest) {
 
     const where: any = { deletedAt: null }
 
-    if (userProjectIds !== null) {
+    if (projetoId) {
+      if (userProjectIds !== null && !userProjectIds.includes(projetoId)) {
+        return NextResponse.json({ despesas: [], total: 0, page, limit })
+      }
+      where.projetoId = projetoId
+    } else if (userProjectIds !== null) {
       where.projetoId = { in: userProjectIds }
     }
 
