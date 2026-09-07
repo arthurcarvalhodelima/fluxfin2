@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
 
     const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
 
+    await prisma.$queryRaw`SELECT 1`
+
     const where: any = { deletedAt: null }
 
     if (userProjectIds !== null) {

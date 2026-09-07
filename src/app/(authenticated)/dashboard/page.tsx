@@ -51,18 +51,32 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Erro ${res.status}`);
+    let cancelled = false;
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 1500;
+
+    async function fetchDashboard(attempt: number) {
+      try {
+        const res = await fetch("/api/dashboard");
+        if (!res.ok) throw new Error(`Erro ${res.status}`);
+        const json = await res.json();
+        if (!cancelled) {
+          setData(json);
+          setLoading(false);
         }
-        return res.json();
-      })
-      .then((json) => {
-        setData(json);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch {
+        if (cancelled) return;
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, BASE_DELAY * attempt));
+          fetchDashboard(attempt + 1);
+        } else {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchDashboard(1);
+    return () => { cancelled = true; };
   }, []);
 
   if (loading) {

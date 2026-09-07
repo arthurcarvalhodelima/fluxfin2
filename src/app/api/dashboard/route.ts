@@ -14,6 +14,8 @@ export async function GET() {
     const userProjectIds = await getUserProjectIds(session.user.id, session.user.papelSistema)
     const projectFilter = userProjectIds !== null ? { id: { in: userProjectIds }, deletedAt: null } : { deletedAt: null }
 
+    await prisma.$queryRaw`SELECT 1`
+
     const [
       totalProjetos,
       projetosAtivos,
