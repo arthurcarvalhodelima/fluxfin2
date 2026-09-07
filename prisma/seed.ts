@@ -30,14 +30,78 @@ const DESCRICOES_PROJETO = [
   'Pesquisa e desenvolvimento de sistema de armazenamento de energia para aplicação em redes de distribuição, visando suporte a picos de demanda e integração de fontes renováveis.',
 ];
 
-const RUBRICAS_BASE = [
-  { nome: 'Recursos Humanos (RH)', categoria: 'RECURSOS_HUMANOS', percentual: 40 },
-  { nome: 'Serviços de Terceiros', categoria: 'SERVICOS_TERCEIROS', percentual: 20 },
-  { nome: 'Materiais de Consumo', categoria: 'MATERIAIS_CONSUMO', percentual: 10 },
-  { nome: 'Materiais Permanentes e Equipamentos', categoria: 'MATERIAIS_PERMANENTES', percentual: 15 },
-  { nome: 'Viagens e Diárias', categoria: 'VIAGENS_DIARIAS', percentual: 5 },
-  { nome: 'Custos Administrativos', categoria: 'CUSTOS_ADMINISTRATIVOS', percentual: 10 },
-];
+const RUBRICAS_POR_CATEGORIA: Record<string, { nomes: string[]; percentual: number }> = {
+  RECURSOS_HUMANOS: {
+    nomes: [
+      'Bolsas de Pesquisa',
+      'Remuneração de Equipe Técnica',
+      'Encargos Sociais e Trabalhistas',
+      'Treimamento e Capacitação',
+      'Diárias de Pesquisadores',
+      'Estágios e Iniciação Científica',
+      'Consultoria Especializada em RH',
+    ],
+    percentual: 40,
+  },
+  SERVICOS_TERCEIROS: {
+    nomes: [
+      'Subcontratação de Análises Laboratoriais',
+      'Serviços de Consultoria Técnica Externa',
+      'Manutenção de Software Especializado',
+      'Serviços de Processamento de Dados',
+      'Auditoria e Certificação Técnica',
+      'Serviços de Campo e Coleta de Dados',
+      'Suporte de Infraestrutura Terceirizada',
+    ],
+    percentual: 20,
+  },
+  MATERIAIS_CONSUMO: {
+    nomes: [
+      'Insumos para Laboratório',
+      'Material Elétrico e Eletrônico',
+      'Combustível e Lubrificantes',
+      'Material de Escritório e Papelaria',
+      'Componentes para Prototipagem',
+      'Reagentes e Produtos Químicos',
+      'Material de Proteção Individual',
+    ],
+    percentual: 10,
+  },
+  MATERIAIS_PERMANENTES: {
+    nomes: [
+      'Equipamentos de Medição e Ensaios',
+      'Computadores e Periféricos',
+      'Instrumentação Científica',
+      'Móveis e Utensílios para Laboratório',
+      'Servidores e Equipamentos de Rede',
+      'Veículos para Apoio ao Projeto',
+      'Módulos Fotovoltaicos e Conversores',
+    ],
+    percentual: 15,
+  },
+  VIAGENS_DIARIAS: {
+    nomes: [
+      'Deslocamento para Visita Técnica',
+      'Participação em Eventos e Congressos',
+      'Diárias para Trabalho de Campo',
+      'Passagens Aéreas para Reuniões',
+      'Hospedagem em Eventos Técnicos',
+      'Transporte Local em Operações',
+    ],
+    percentual: 5,
+  },
+  CUSTOS_ADMINISTRATIVOS: {
+    nomes: [
+      'Infraestrutura e Energia do Laboratório',
+      'Aluguel de Espaço Operacional',
+      'Licenças de Software e Sistemas',
+      'Seguro de Equipamentos e Projetos',
+      'Despesas Bancárias e Financeiras',
+      'Publicações e Relatórios Técnicos',
+    ],
+    percentual: 10,
+  },
+};
 
 const MILESTONE_POOL = [
   { nome: 'Kickoff e Alinhamento Inicial', fase: 'inicio', percentual: 5 },
@@ -144,16 +208,21 @@ function addDays(date: Date, days: number): Date {
 }
 
 function randomRubricas(budget: number): Array<{ nome: string; categoria: string; valorAlocado: number }> {
-  const variations = RUBRICAS_BASE.map((r) => ({
-    ...r,
-    adjusted: r.percentual + randomInt(-5, 5),
-  }));
+  const categorias = Object.keys(RUBRICAS_POR_CATEGORIA);
+  const variations = categorias.map((cat) => {
+    const base = RUBRICAS_POR_CATEGORIA[cat];
+    return {
+      nome: randomChoice(base.nomes),
+      categoria: cat,
+      percentual: base.percentual + randomInt(-5, 5),
+    };
+  });
 
-  const total = variations.reduce((sum, r) => sum + r.adjusted, 0);
+  const total = variations.reduce((sum, r) => sum + r.percentual, 0);
   return variations.map((r) => ({
     nome: r.nome,
     categoria: r.categoria,
-    valorAlocado: Math.round((budget * r.adjusted) / total),
+    valorAlocado: Math.round((budget * r.percentual) / total),
   }));
 }
 
@@ -204,6 +273,7 @@ async function main() {
 
   console.log('\n🧹 Limpando dados anteriores...');
   await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_check_coordenador ON "EquipeProjeto"');
+  await prisma.$executeRawUnsafe('DROP TRIGGER IF EXISTS trg_prevent_auditlog_modification ON "AuditLog"');
   await prisma.auditLog.deleteMany();
   await prisma.documentoProjeto.deleteMany();
   await prisma.despesa.deleteMany();
@@ -216,6 +286,12 @@ async function main() {
         AFTER INSERT OR DELETE ON "EquipeProjeto"
         FOR EACH ROW
         EXECUTE FUNCTION check_coordenador_exists()
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TRIGGER trg_prevent_auditlog_modification
+        BEFORE UPDATE OR DELETE ON "AuditLog"
+        FOR EACH ROW
+        EXECUTE FUNCTION prevent_auditlog_modification()
   `);
   console.log('✅ Dados anteriores removidos');
 
